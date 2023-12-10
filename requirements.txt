@@ -1,0 +1,6 @@
+attrs>=23.2.0
+httpx[http2]>=0.27.0
+loguru>=0.7.2
+tenacity>=8.2.3
+trio>=0.24.0
+trio-typing>=0.10.0
