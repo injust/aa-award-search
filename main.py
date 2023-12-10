@@ -1,0 +1,98 @@
+from __future__ import annotations
+
+import datetime as dt
+import sys
+from collections.abc import Callable, Iterable, Sequence
+from random import randrange
+
+import httpx
+import trio
+from attrs import define, field, validators
+from loguru import logger
+from trio_typing import TaskStatus
+
+from api import Query
+from config import pretty_printer
+from flights import Availability
+from utils import beep, compute_diff
+
+
+@define
+class Job:
+    name: str
+    query: Query
+    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    filters: Iterable[Callable[[Availability], bool]] = ()
+    availability: Sequence[Availability] | None = None
+
+
+async def run_job(
+    job: Job, httpx_client: httpx.AsyncClient, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED
+) -> None:
+    with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
+        task_status.started(scope)
+
+        jitter = randrange(int(job.frequency.total_seconds() // 2))
+        await trio.sleep(jitter)
+
+        while True:
+            try:
+                availability = [
+                    avail
+                    async for avail in job.query.search(httpx_client)
+                    if all(filter(avail) for filter in job.filters)
+                ]
+            except httpx.TransportError as e:
+                logger.warning(f"{e!r}")
+                beep()
+            except httpx.HTTPStatusError as e:
+                log = logger.warning if e.response.is_server_error else logger.error
+                log(f"{e!r}, request_content={e.request.content.decode()}")
+                beep()
+                if not e.response.is_server_error:
+                    break
+            except httpx.HTTPError as e:
+                logger.exception(f"{e!r}")
+                beep()
+                break
+            except Exception as e:
+                logger.exception(f"{e!r}, query={job.query}")
+                beep()
+                break
+            else:
+                if (prev_availability := job.availability) is None:
+                    print(job.name)
+                    pretty_printer().pprint(list(map(Availability.asdict, availability)))
+                    print()
+
+                    if availability:
+                        beep()
+                elif diff := list(compute_diff(prev_availability, availability)):
+                    print(job.name)
+                    print(*diff, sep="\n")
+                    print()
+
+                    if any(line.startswith("+") for line in diff):
+                        beep(3)
+
+                job.availability = availability
+            finally:
+                await trio.sleep(job.frequency.total_seconds())
+
+
+@logger.catch(onerror=lambda _: sys.exit(1))
+async def main() -> None:
+    jobs: list[Job] = []
+
+    async with httpx.AsyncClient(
+        http2=True,
+        timeout=httpx.Timeout(5, read=10),
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=60),
+        base_url="https://www.aa.com/booking/api",
+    ) as httpx_client, trio.open_nursery() as nursery:
+        for job in jobs:
+            nursery.start_soon(run_job, job, httpx_client)
+
+
+if __name__ == "__main__":
+    trio.run(main)
