@@ -114,7 +114,7 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
         except Exception as e:
             if isinstance(e, httpx.HTTPStatusError):
                 assert not e.response.is_server_error
-                logger.error(f"{e!r}, request_content={e.request.content.decode()}")
+                logger.error(f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}")
             elif isinstance(e, httpx.HTTPError):
                 logger.exception(f"{e!r}")
             else:
