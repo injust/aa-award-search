@@ -5,7 +5,7 @@ from collections.abc import AsyncIterable
 
 import httpx
 import trio
-from attrs import frozen
+from attrs import field, frozen, validators
 from loguru import logger
 from tenacity import (
     before_sleep_log,
@@ -24,6 +24,10 @@ class Query:
     origin: str
     destination: str
     date: dt.date
+    passengers: int = field(
+        default=1,
+        validator=[validators.ge(1), validators.le(9)],  # pyright: ignore[reportGeneralTypeIssues]
+    )
 
     @retry(
         sleep=trio.sleep,
@@ -46,7 +50,7 @@ class Query:
             "/search/calendar",
             json={
                 "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
-                "passengers": [{"type": "adult", "count": 1}],
+                "passengers": [{"type": "adult", "count": self.passengers}],
                 "requestHeader": {"clientId": "AAcom"},
                 "slices": [
                     {
