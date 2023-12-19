@@ -86,24 +86,17 @@ async def main() -> None:
 
     jobs = [
         Job(
-            "HKG-ORD",
-            Query("HKG", "ORD", dt.date(2024, 1, 25)),
-            ONE_MINUTE,
-            [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)],
-        ),
+            Query("HKG", "ORD", dt.date(2024, 1, 25)), ONE_MINUTE, [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)]
+        ),  # pyright: ignore[reportGeneralTypeIssues]
         Job(
-            "HKG-DFW",
-            Query("HKG", "DFW", dt.date(2024, 1, 25)),
-            ONE_MINUTE,
-            [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)],
-        ),
+            Query("HKG", "DFW", dt.date(2024, 1, 25)), ONE_MINUTE, [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)]
+        ),  # pyright: ignore[reportGeneralTypeIssues]
         Job(
-            "HKG-NYC",
-            Query("HKG", "NYC", dt.date(2024, 1, 25)),
-            ONE_MINUTE,
-            [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)],
-        ),
-        Job("HKG-NYC", Query("HKG", "NYC", dt.date(2024, 2, 5)), ONE_MINUTE, [miles_eq(70000)]),
+            Query("HKG", "NYC", dt.date(2024, 1, 25)), ONE_MINUTE, [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)]
+        ),  # pyright: ignore[reportGeneralTypeIssues]
+        Job(
+            Query("HKG", "NYC", dt.date(2024, 2, 5)), ONE_MINUTE, [miles_eq(70000)]
+        ),  # pyright: ignore[reportGeneralTypeIssues]
     ]
 
     async with httpx.AsyncClient(
