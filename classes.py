@@ -52,10 +52,11 @@ class MultiQuery:
     origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     date: dt.date
+    passengers: int = 1
 
     def to_queries(self) -> Iterable[Query]:
         for origin, destination in product(self.origins, self.destinations):
-            yield Query(origin, destination, self.date)
+            yield Query(origin, destination, self.date, self.passengers)
 
 
 @define
@@ -63,6 +64,9 @@ class Query:
     origin: str
     destination: str
     date: dt.date
+    passengers: int = field(
+        default=1, validator=[validators.ge(1), validators.le(9)]  # pyright: ignore[reportGeneralTypeIssues]
+    )
 
 
 @define

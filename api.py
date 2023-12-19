@@ -40,7 +40,7 @@ async def send_query(query: Query, httpx_client: httpx.AsyncClient) -> AsyncIter
         "/search/calendar",
         json={
             "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
-            "passengers": [{"type": "adult", "count": 1}],
+            "passengers": [{"type": "adult", "count": query.passengers}],
             "requestHeader": {"clientId": "AAcom"},
             "slices": [
                 {
