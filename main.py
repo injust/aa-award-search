@@ -26,12 +26,12 @@ class Job:
         destinations: Iterable[str] = field(
             validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
         )
-        date: dt.date
+        dates: Iterable[dt.date]
         passengers: int = 1
 
         def queries(self) -> Iterable[api.Query]:
-            for origin, destination in product(self.origins, self.destinations):
-                yield api.Query(origin, destination, self.date, self.passengers)
+            for origin, destination, date in product(self.origins, self.destinations, self.dates):
+                yield api.Query(origin, destination, date, self.passengers)
 
     query: Query
     frequency: dt.timedelta
@@ -41,7 +41,9 @@ class Job:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.date}"
+        return (
+            f"{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {'/'.join(map(str, self.query.dates))}"
+        )
 
     def tasks(self) -> Iterable[Task]:
         for query in self.query.queries():
