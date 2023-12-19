@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime as dt
+from itertools import product
 from typing import Callable, Iterable, Sequence
 
 import attrs
@@ -31,16 +32,30 @@ class Availability:
 
 @define
 class Job:
-    query: Query
-    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    multi_query: MultiQuery
+    frequency: dt.timedelta
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
-    availability: Sequence[Availability] | None = None
     scope: trio.CancelScope | None = None
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{self.query.origin}-{self.query.destination}"
+        return f"{'/'.join(self.multi_query.origins)}-{'/'.join(self.multi_query.destinations)} {self.multi_query.date}"
+
+    def to_tasks(self) -> Iterable[Task]:
+        for query in self.multi_query.to_queries():
+            yield Task(query, self.frequency, self.filters)
+
+
+@define
+class MultiQuery:
+    origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
+    destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
+    date: dt.date
+
+    def to_queries(self) -> Iterable[Query]:
+        for origin, destination in product(self.origins, self.destinations):
+            yield Query(origin, destination, self.date)
 
 
 @define
@@ -48,3 +63,11 @@ class Query:
     origin: str
     destination: str
     date: dt.date
+
+
+@define
+class Task:
+    query: Query
+    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    filters: Iterable[Callable[[Availability], bool]] = ()
+    availability: Sequence[Availability] | None = None
