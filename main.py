@@ -71,10 +71,7 @@ async def run_job(
 
 
 async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
-    jitter = randrange(int(task.frequency.total_seconds() // 2))
-    await trio.sleep(jitter)
-
-    while True:
+    async def run_once() -> None:
         try:
             availability = [
                 avail
@@ -85,19 +82,10 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
             logger.warning(f"{e!r}")
             beep()
         except httpx.HTTPStatusError as e:
-            log = logger.warning if e.response.is_server_error else logger.error
-            log(f"{e!r}, request_content={e.request.content.decode()}")
-            beep()
             if not e.response.is_server_error:
-                break
-        except httpx.HTTPError as e:
-            logger.exception(f"{e!r}")
+                raise e
+            logger.warning(f"{e!r}, request_content={e.request.content.decode()}")
             beep()
-            break
-        except Exception as e:
-            logger.exception(f"{e!r}, query={task.query}")
-            beep()
-            break
         else:
             if (prev_availability := task.availability) is None:
                 print(task.name)
@@ -115,8 +103,25 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
                     beep(3)
 
             task.availability = availability
-        finally:
+
+    jitter = randrange(int(task.frequency.total_seconds() // 2))
+    await trio.sleep(jitter)
+
+    while True:
+        try:
+            await run_once()
             await trio.sleep(task.frequency.total_seconds())
+        except Exception as e:
+            if isinstance(e, httpx.HTTPStatusError):
+                assert not e.response.is_server_error
+                logger.error(f"{e!r}, request_content={e.request.content.decode()}")
+            elif isinstance(e, httpx.HTTPError):
+                logger.exception(f"{e!r}")
+            else:
+                logger.exception(f"{e!r}, task={task}")
+
+            beep()
+            break
 
 
 @logger.catch(onerror=lambda _: sys.exit(1))
