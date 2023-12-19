@@ -75,9 +75,7 @@ async def run_job(
 
 
 async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
-    await trio.sleep(random.uniform(0, task.frequency.total_seconds() / 2))
-
-    while True:
+    async def run_task_once() -> None:
         try:
             availability = [
                 avail
@@ -88,19 +86,10 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
             logger.warning(f"{e!r}")
             beep()
         except httpx.HTTPStatusError as e:
-            log = logger.error if e.response.status_code < 500 else logger.warning
-            log(f"{e!r}, request_content={e.request.content.decode()}")
-            beep()
             if e.response.status_code < 500:
-                break
-        except httpx.HTTPError as e:
-            logger.exception(f"{e!r}")
+                raise e
+            logger.warning(f"{e!r}, request_content={e.request.content.decode()}")
             beep()
-            break
-        except Exception as e:
-            logger.exception(f"{e!r}, query={task.query}")
-            beep()
-            break
         else:
             if (prev_availability := task.availability) is None:
                 print(task.name)
@@ -118,8 +107,24 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
                     beep(3)
 
             task.availability = availability
-        finally:
+
+    await trio.sleep(random.uniform(0, task.frequency.total_seconds() / 2))
+
+    while True:
+        try:
+            await run_task_once()
             await trio.sleep(task.frequency.total_seconds())
+        except Exception as e:
+            if isinstance(e, httpx.HTTPStatusError):
+                assert e.response.status_code < 500
+                logger.error(f"{e!r}, request_content={e.request.content.decode()}")
+            elif isinstance(e, httpx.HTTPError):
+                logger.exception(f"{e!r}")
+            else:
+                logger.exception(f"{e!r}, task={task}")
+
+            beep()
+            break
 
 
 @logger.catch(onerror=lambda _: sys.exit(1))
