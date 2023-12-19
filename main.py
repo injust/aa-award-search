@@ -69,7 +69,7 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
         except Exception as e:
             if isinstance(e, httpx.HTTPStatusError):
                 assert e.response.status_code < 500
-                logger.error(f"{e!r}, query={task.query}")
+                logger.error(f"{e!r}, response_json={e.response.json()}, query={task.query}")
             elif isinstance(e, httpx.HTTPError):
                 logger.exception(f"{e!r}")
             else:
