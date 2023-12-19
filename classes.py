@@ -40,7 +40,7 @@ class Job:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{'/'.join(self.multi_query.origins)}-{'/'.join(self.multi_query.destinations)} {self.multi_query.date}"
+        return f"{'/'.join(self.multi_query.origins)}-{'/'.join(self.multi_query.destinations)} {'/'.join(map(str, self.multi_query.dates))}"
 
     def to_tasks(self) -> Iterable[Task]:
         for query in self.multi_query.to_queries():
@@ -51,12 +51,12 @@ class Job:
 class MultiQuery:
     origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
-    date: dt.date
+    dates: Iterable[dt.date]
     passengers: int = 1
 
     def to_queries(self) -> Iterable[Query]:
-        for origin, destination in product(self.origins, self.destinations):
-            yield Query(origin, destination, self.date, self.passengers)
+        for origin, destination, date in product(self.origins, self.destinations, self.dates):
+            yield Query(origin, destination, date, self.passengers)
 
 
 @define
