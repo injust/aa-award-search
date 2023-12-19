@@ -25,10 +25,11 @@ class Job:
             validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
         )
         date: dt.date
+        passengers: int = 1
 
         def queries(self) -> Iterable[api.Query]:
             for origin, destination in product(self.origins, self.destinations):
-                yield api.Query(origin, destination, self.date)
+                yield api.Query(origin, destination, self.date, self.passengers)
 
     query: Query
     frequency: dt.timedelta
