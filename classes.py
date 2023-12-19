@@ -6,12 +6,12 @@ from typing import Callable, Iterable, Sequence
 
 import attrs
 import trio
-from attrs import Attribute, define, field, validators
+from attrs import Attribute, define, field, frozen, validators
 
 
-@define
+@frozen
 class Availability:
-    @define
+    @frozen
     class Fees:
         amount: float
         currency: str
@@ -47,7 +47,7 @@ class Job:
             yield Task(query, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
 
 
-@define
+@frozen
 class MultiQuery:
     origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
@@ -59,7 +59,7 @@ class MultiQuery:
             yield Query(origin, destination, date, self.passengers)
 
 
-@define
+@frozen
 class Query:
     origin: str
     destination: str
