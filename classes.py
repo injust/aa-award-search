@@ -44,7 +44,7 @@ class Job:
 
     def to_tasks(self) -> Iterable[Task]:
         for query in self.multi_query.to_queries():
-            yield Task(query, self.frequency, self.filters)
+            yield Task(query, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
 
 
 @define
@@ -70,4 +70,9 @@ class Task:
     query: Query
     frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
     filters: Iterable[Callable[[Availability], bool]] = ()
+    name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
     availability: Sequence[Availability] | None = None
+
+    @name.default  # pyright: ignore[reportGeneralTypeIssues]
+    def _default_name(self) -> str:
+        return f"{self.query.origin}-{self.query.destination}"

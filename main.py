@@ -55,14 +55,14 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
             break
         else:
             if (prev_availability := task.availability) is None:
-                print(f"{task.query.origin}-{task.query.destination}")
+                print(task.name)
                 pretty_printer().pprint(list(map(Availability.asdict, availability)))
                 print()
 
                 if availability:
                     beep()
             elif diff := list(compute_diff(prev_availability, availability)):
-                print(f"{task.query.origin}-{task.query.destination}")
+                print(task.name)
                 print(*diff, sep="\n")
                 print()
 
