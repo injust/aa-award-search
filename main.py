@@ -15,7 +15,7 @@ from trio_typing import TaskStatus
 import api
 from config import pretty_printer
 from flights import Availability
-from utils import beep, compute_diff
+from utils import beep, compute_diff, format_diff
 
 
 @define
@@ -92,19 +92,16 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
             beep()
         else:
             if (prev_availability := task.availability) is None:
-                print(task.name)
-                pretty_printer().pprint(list(map(Availability.asdict, availability)))
-                print()
-
+                logger.info(f"{task.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
                 if availability:
                     beep()
-            elif diff := list(compute_diff(prev_availability, availability)):
-                print(task.name)
-                print(*diff, sep="\n")
-                print()
+            else:
+                diff = list(compute_diff(prev_availability, availability))
 
-                if any(line.startswith("+") for line in diff):
-                    beep(3)
+                if any(change > " " for change, _ in diff):
+                    logger.opt(colors=True).info(f"{task.name}\n{format_diff(diff)}\n")
+                    if any(change == "+" for change, _ in diff):
+                        beep(3)
 
             task.availability = availability
 

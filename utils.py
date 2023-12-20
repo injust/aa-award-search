@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-import difflib
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from time import sleep
+from typing import Literal
 
 from config import pretty_printer
 from flights import Availability
+
+type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
 
 def beep(n: int = 1) -> None:
@@ -16,12 +18,23 @@ def beep(n: int = 1) -> None:
         sleep(INTERVAL)
 
 
-def compute_diff(a: Sequence[Availability], b: Sequence[Availability]) -> Iterable[str]:
-    for line in difflib.unified_diff(
-        tuple(map(pretty_printer().pformat, map(Availability.asdict, a))),
-        tuple(map(pretty_printer().pformat, map(Availability.asdict, b))),
-        n=max(len(a), len(b)),
-        lineterm="",
-    ):
-        if not (line.startswith("@@") or line in {"+++ ", "--- "}):
-            yield line
+def compute_diff(a: Iterable[Availability], b: Iterable[Availability]) -> Iterable[DiffLine]:
+    old = {avail.date: avail for avail in a}
+    new = {avail.date: avail for avail in b}
+
+    for date in sorted(old.keys() | new.keys()):
+        if old.get(date, None) == new.get(date, None):
+            yield (" ", new[date])
+        else:
+            if date in old:
+                yield ("-", old[date])
+            if date in new:
+                yield ("+", new[date])
+
+
+def format_diff(diff: Iterable[DiffLine]) -> str:
+    LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
+
+    return "\n".join(
+        f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail.asdict())}</>" for change, avail in diff
+    )
