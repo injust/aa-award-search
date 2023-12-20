@@ -44,7 +44,7 @@ class Job:
 
     def tasks(self) -> Iterable[Task]:
         for query in self.query.queries():
-            yield Task(query, self.frequency, self.filters)
+            yield Task(query, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
 
 
 @define
@@ -52,7 +52,12 @@ class Task:
     query: api.Query
     frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
     filters: Iterable[Callable[[Availability], bool]] = ()
+    name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
     availability: Sequence[Availability] | None = None
+
+    @name.default  # pyright: ignore[reportGeneralTypeIssues]
+    def _default_name(self) -> str:
+        return f"{self.query.origin}-{self.query.destination}"
 
 
 async def run_job(
@@ -94,14 +99,14 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
             break
         else:
             if (prev_availability := task.availability) is None:
-                print(f"{task.query.origin}-{task.query.destination}")
+                print(task.name)
                 pretty_printer().pprint(list(map(Availability.asdict, availability)))
                 print()
 
                 if availability:
                     beep()
             elif diff := list(compute_diff(prev_availability, availability)):
-                print(f"{task.query.origin}-{task.query.destination}")
+                print(task.name)
                 print(*diff, sep="\n")
                 print()
 
