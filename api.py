@@ -6,14 +6,6 @@ from collections.abc import AsyncIterable
 import httpx
 from attrs import field, frozen, validators
 from loguru import logger
-from tenacity import (
-    before_sleep_log,
-    retry,
-    retry_if_exception,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from flights import Availability
 
@@ -28,20 +20,6 @@ class Query:
         validator=[validators.ge(1), validators.le(9)],  # pyright: ignore[reportGeneralTypeIssues]
     )
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(),
-        retry=retry_if_exception(lambda e: isinstance(e, httpx.HTTPStatusError) and e.response.is_server_error),
-        before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
-        reraise=True,
-    )
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_exponential(max=32),
-        retry=retry_if_exception_type(httpx.TransportError),
-        before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
-        reraise=True,
-    )
     async def search(self, httpx_client: httpx.AsyncClient) -> AsyncIterable[Availability]:
         r = await httpx_client.post(
             "/search/calendar",
