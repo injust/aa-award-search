@@ -60,6 +60,10 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
 
             task.availability = availability
 
+    if not task.frequency:
+        await run_task_once()
+        return
+
     await trio.sleep(random.uniform(0, task.frequency.total_seconds() / 2))
 
     while True:

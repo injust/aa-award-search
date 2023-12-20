@@ -33,7 +33,7 @@ class Availability:
 @define
 class Job:
     multi_query: MultiQuery
-    frequency: dt.timedelta
+    frequency: dt.timedelta | None = None
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
     scope: trio.CancelScope | None = None
@@ -72,7 +72,9 @@ class Query:
 @define
 class Task:
     query: Query
-    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    frequency: dt.timedelta | None = field(
+        default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
+    )
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
     availability: Sequence[Availability] | None = None
