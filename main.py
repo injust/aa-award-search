@@ -32,7 +32,7 @@ class Job:
                 yield api.Query(origin, destination, date, self.passengers)
 
     query: Query
-    frequency: dt.timedelta
+    frequency: dt.timedelta | None = None
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
 
@@ -50,7 +50,9 @@ class Job:
 @define
 class Task:
     query: api.Query
-    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    frequency: dt.timedelta | None = field(
+        default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
+    )
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
     availability: Sequence[Availability] | None = None
@@ -103,6 +105,10 @@ async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
                     beep(3)
 
             task.availability = availability
+
+    if not task.frequency:
+        await run_once()
+        return
 
     jitter = randrange(int(task.frequency.total_seconds() // 2))
     await trio.sleep(jitter)
