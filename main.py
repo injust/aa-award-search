@@ -118,12 +118,12 @@ async def main() -> None:
 
     jobs = [
         Job(
-            MultiQuery(["HKG"], ["DFW", "NYC", "ORD"], [dt.date(2024, 1, 25)], 3),
+            MultiQuery(["HKG"], ["DFW", "NYC", "ORD"], [dt.date(2024, 1, 25)], 1, 3),
             ONE_MINUTE,
             [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)],
         ),  # pyright: ignore[reportGeneralTypeIssues]
         Job(
-            MultiQuery(["HKG"], ["NYC"], [dt.date(2024, 1, 25), dt.date(2024, 2, 5)]),
+            MultiQuery(["HKG"], ["NYC"], [dt.date(2024, 1, 25), dt.date(2024, 2, 5)], 1),
             ONE_MINUTE,
             [date_ge(dt.date(2024, 1, 23)), miles_eq(70000)],
         ),  # pyright: ignore[reportGeneralTypeIssues]
