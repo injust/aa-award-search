@@ -22,7 +22,7 @@ async def send_query(query: Query, httpx_client: httpx.AsyncClient) -> AsyncIter
                     "departureDate": query.date.isoformat(),
                     "destination": query.destination,
                     "destinationNearbyAirports": False,
-                    "maxStops": query.max_stops,
+                    "maxStops": None,
                     "origin": query.origin,
                     "originNearbyAirports": False,
                 }
