@@ -3,6 +3,24 @@ from __future__ import annotations
 from functools import cache
 from pprint import PrettyPrinter
 
+import httpx
+
+_httpx_client: httpx.AsyncClient | None = None
+
+
+def httpx_client() -> httpx.AsyncClient:
+    global _httpx_client
+
+    if _httpx_client is None or _httpx_client.is_closed:
+        _httpx_client = httpx.AsyncClient(
+            http2=True,
+            timeout=httpx.Timeout(5, read=10),
+            limits=httpx.Limits(max_connections=100, max_keepalive_connections=20, keepalive_expiry=60),
+            base_url="https://www.aa.com/booking/api",
+        )
+
+    return _httpx_client
+
 
 @cache
 def pretty_printer() -> PrettyPrinter:

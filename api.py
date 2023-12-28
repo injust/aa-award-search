@@ -3,13 +3,12 @@ from __future__ import annotations
 import datetime as dt
 from typing import AsyncIterable
 
-import httpx
-
 from classes import Availability, Query
+from config import httpx_client
 
 
-async def send_query(query: Query, httpx_client: httpx.AsyncClient) -> AsyncIterable[Availability]:
-    r = await httpx_client.post(
+async def send_query(query: Query) -> AsyncIterable[Availability]:
+    r = await httpx_client().post(
         "/search/calendar",
         json={
             "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
