@@ -7,6 +7,7 @@ import httpx
 from attrs import field, frozen, validators
 from loguru import logger
 
+from config import httpx_client
 from flights import Availability
 
 
@@ -20,7 +21,7 @@ class Query:
         validator=[validators.ge(1), validators.le(9)],  # pyright: ignore[reportGeneralTypeIssues]
     )
 
-    async def search(self, httpx_client: httpx.AsyncClient) -> AsyncIterable[Availability]:
+    async def search(self, httpx_client: httpx.AsyncClient = httpx_client()) -> AsyncIterable[Availability]:
         r = await httpx_client.post(
             "/search/calendar",
             json={
