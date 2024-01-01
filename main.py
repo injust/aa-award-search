@@ -22,7 +22,7 @@ from tenacity import (
 )
 from trio_typing import TaskStatus
 
-import api
+from api import AvailabilityQuery, CalendarQuery, WeeklyQuery
 from config import httpx_client, pretty_printer
 from flights import Availability
 from utils import beep
@@ -71,9 +71,13 @@ class Job:
         dates: Iterable[dt.date]
         passengers: int = 1
 
-        def queries(self) -> Iterable[api.Query]:
+        def calendar(self) -> Iterable[CalendarQuery]:
             for origin, destination, date in product(self.origins, self.destinations, self.dates):
-                yield api.Query(origin, destination, date, self.passengers)
+                yield CalendarQuery(origin, destination, date, self.passengers)
+
+        def weekly(self) -> Iterable[WeeklyQuery]:
+            for origin, destination, date in product(self.origins, self.destinations, self.dates):
+                yield WeeklyQuery(origin, destination, date, self.passengers)
 
     query: Query
     frequency: dt.timedelta | None = None
@@ -88,13 +92,13 @@ class Job:
         )
 
     def tasks(self) -> Iterable[Task]:
-        for query in self.query.queries():
+        for query in self.query.calendar():
             yield Task(query, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
 
 
 @define
 class Task:
-    query: api.Query
+    query: AvailabilityQuery
     frequency: dt.timedelta | None = field(
         default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
     )
