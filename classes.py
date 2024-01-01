@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import datetime as dt
 from itertools import product
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Iterable, Literal, Self, Sequence, TypeAlias
 
 import attrs
 import trio
 from attrs import Attribute, define, field, frozen, validators
+
+from config import pretty_printer
 
 
 @frozen
@@ -28,6 +30,39 @@ class Availability:
         if isinstance(value, dt.date):
             return value.isoformat()
         return value
+
+
+DiffLine: TypeAlias = tuple[Literal[" ", "+", "-"], Availability]
+
+
+@frozen
+class Diff:
+    lines: Sequence[DiffLine]
+
+    @classmethod
+    def from_availability(cls, a: Iterable[Availability], b: Iterable[Availability]) -> Self:
+        old = {avail.date: avail for avail in a}
+        new = {avail.date: avail for avail in b}
+
+        lines: list[DiffLine] = []
+        for date in sorted(old.keys() | new.keys()):
+            if old.get(date, None) == new.get(date, None):
+                lines.append((" ", new[date]))
+            else:
+                if date in old:
+                    lines.append(("-", old[date]))
+                if date in new:
+                    lines.append(("+", new[date]))
+
+        return cls(lines)
+
+    def colorized(self) -> str:
+        LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
+
+        return "\n".join(
+            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail.asdict())}</>"
+            for change, avail in self.lines
+        )
 
 
 @define

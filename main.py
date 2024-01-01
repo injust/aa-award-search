@@ -20,9 +20,9 @@ from tenacity import (
 from trio_typing import TaskStatus
 
 from api import send_query
-from classes import Availability, Job, MultiQuery, Task
+from classes import Availability, Diff, Job, MultiQuery, Task
 from config import httpx_client, pretty_printer
-from utils import beep, compute_diff, format_diff
+from utils import beep
 
 
 async def run_job(job: Job, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
@@ -65,11 +65,11 @@ async def run_task(task: Task) -> None:
                 if availability:
                     beep()
             else:
-                diff = list(compute_diff(prev_availability, availability))
+                diff = Diff.from_availability(prev_availability, availability)
 
-                if any(change > " " for change, _ in diff):
-                    logger.opt(colors=True).info(f"{task.name}\n{format_diff(diff)}\n")
-                    if any(change == "+" for change, _ in diff):
+                if any(change > " " for change, _ in diff.lines):
+                    logger.opt(colors=True).info(f"{task.name}\n{diff.colorized()}\n")
+                    if any(change == "+" for change, _ in diff.lines):
                         beep(3)
 
             task.availability = availability
