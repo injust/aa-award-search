@@ -1,8 +1,9 @@
 import datetime as dt
 import sys
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from itertools import product
 from random import randrange
+from typing import Literal, Self
 
 import httpx
 import trio
@@ -21,7 +22,38 @@ from trio_typing import TaskStatus
 import api
 from config import httpx_client, pretty_printer
 from flights import Availability
-from utils import beep, compute_diff, format_diff
+from utils import beep
+
+type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
+
+
+@frozen
+class Diff:
+    lines: Collection[DiffLine]
+
+    @classmethod
+    def compare(cls, a: Iterable[Availability], b: Iterable[Availability]) -> Self:
+        old = {avail.date: avail for avail in a}
+        new = {avail.date: avail for avail in b}
+
+        lines: list[DiffLine] = []
+        for date in sorted(old.keys() | new.keys()):
+            if old.get(date, None) == new.get(date, None):
+                lines.append((" ", new[date]))
+            else:
+                if date in old:
+                    lines.append(("-", old[date]))
+                if date in new:
+                    lines.append(("+", new[date]))
+        return cls(lines)
+
+    def colorized(self) -> str:
+        LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
+
+        return "\n".join(
+            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail.asdict())}</>"
+            for change, avail in self.lines
+        )
 
 
 @define
@@ -106,11 +138,11 @@ async def run_task(task: Task) -> None:
                 if availability:
                     beep()
             else:
-                diff = list(compute_diff(prev_availability, availability))
+                diff = Diff.compare(prev_availability, availability)
 
-                if any(change > " " for change, _ in diff):
-                    logger.opt(colors=True).info(f"{task.name}\n{format_diff(diff)}\n")
-                    if any(change == "+" for change, _ in diff):
+                if any(change > " " for change, _ in diff.lines):
+                    logger.opt(colors=True).info(f"{task.name}\n{diff.colorized()}\n")
+                    if any(change == "+" for change, _ in diff.lines):
                         beep(3)
 
             task.availability = availability
