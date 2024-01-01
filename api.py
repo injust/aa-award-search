@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import AsyncIterable
+from typing import Any, AsyncIterable
 
 from classes import Availability, Query
 from config import httpx_client
 
 
-async def send_query(query: Query) -> AsyncIterable[Availability]:
+async def _send_search_query(endpoint: str, query: Query) -> dict[str, Any]:
     r = await httpx_client().post(
-        "/search/calendar",
+        endpoint,
         json={
             "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
             "passengers": [{"type": "adult", "count": query.passengers}],
@@ -34,9 +34,15 @@ async def send_query(query: Query) -> AsyncIterable[Availability]:
     )
     r.raise_for_status()
 
-    data = r.json()
+    data: dict[str, Any] = r.json()
     if (error := data["error"]) and error != "309":
         raise ValueError(f"Unexpected error code: {error!r}, response_json={data}, query={query}")
+
+    return data
+
+
+async def search_calendar(query: Query) -> AsyncIterable[Availability]:
+    data = await _send_search_query("/search/calendar", query)
 
     for month in data["calendarMonths"]:
         for week in month["weeks"]:
@@ -50,3 +56,18 @@ async def send_query(query: Query) -> AsyncIterable[Availability]:
                         solution["perPassengerAwardPoints"],
                         Availability.Fees(**solution["perPassengerSaleTotal"]),
                     )
+
+
+async def search_weekly(query: Query) -> AsyncIterable[Availability]:
+    data = await _send_search_query("/search/weekly", query)
+
+    for day in data["days"]:
+        if day["solutionId"]:
+            if (currency := day["perPassengerDisplayTotal"]["currency"]) != "USD":
+                raise ValueError(f"Unexpected currency: {currency!r}, response_json={data}, query={query}")
+
+            yield Availability(
+                dt.date.fromisoformat(day["date"]),
+                int(day["perPassengerAwardPointsTotal"]),
+                Availability.Fees(**day["perPassengerDisplayTotal"]),
+            )

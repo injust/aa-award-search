@@ -19,7 +19,7 @@ from tenacity import (
 )
 from trio_typing import TaskStatus
 
-from api import send_query
+from api import search_calendar
 from classes import Availability, Diff, Job, MultiQuery, Task
 from config import httpx_client, pretty_printer
 from utils import beep
@@ -53,7 +53,7 @@ async def run_task(task: Task) -> None:
     async def run_task_once() -> None:
         try:
             availability = [
-                avail async for avail in send_query(task.query) if all(filter(avail) for filter in task.filters)
+                avail async for avail in search_calendar(task.query) if all(filter(avail) for filter in task.filters)
             ]
         except httpx.HTTPStatusError as e:
             if e.response.status_code >= 500:
