@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import datetime as dt
-from typing import AsyncIterable
+from abc import ABC, abstractmethod
+from typing import Any, AsyncIterable
 
 import httpx
 from attrs import field, frozen, validators
@@ -12,7 +13,7 @@ from flights import Availability
 
 
 @frozen
-class Query:
+class Query(ABC):
     origin: str
     destination: str
     date: dt.date
@@ -20,9 +21,9 @@ class Query:
         default=1, validator=[validators.ge(1), validators.le(9)]  # pyright: ignore[reportGeneralTypeIssues]
     )
 
-    async def search(self, httpx_client: httpx.AsyncClient = httpx_client()) -> AsyncIterable[Availability]:
+    async def _send_query(self, endpoint: str, httpx_client: httpx.AsyncClient = httpx_client()) -> dict[str, Any]:
         r = await httpx_client.post(
-            "/search/calendar",
+            endpoint,
             json={
                 "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
                 "passengers": [{"type": "adult", "count": self.passengers}],
@@ -47,13 +48,28 @@ class Query:
         )
         r.raise_for_status()
 
-        data = r.json()
+        data: dict[str, Any] = r.json()
         if (error := data["error"]) and error != "309":
             raise ValueError(
                 f"Unexpected error code: {error!r}, response_json={data}, request_content={r.request.content.decode()}"
             )
 
-        if error == 309 and any(
+        return data
+
+
+@frozen
+class AvailabilityQuery(Query):
+    @abstractmethod
+    def search(self) -> AsyncIterable[Availability]:
+        return NotImplemented
+
+
+@frozen
+class CalendarQuery(AvailabilityQuery):
+    async def search(self) -> AsyncIterable[Availability]:
+        data = await self._send_query("/search/calendar")
+
+        if data["error"] == 309 and any(
             day["solution"] for month in data["calendarMonths"] for week in month["weeks"] for day in week["days"]
         ):
             logger.warning(f"Error 309 response contains solutions, data={data}")
@@ -67,3 +83,20 @@ class Query:
                             solution["perPassengerAwardPoints"],
                             Availability.Fees(**solution["perPassengerSaleTotal"]),
                         )
+
+
+@frozen
+class WeeklyQuery(AvailabilityQuery):
+    async def search(self) -> AsyncIterable[Availability]:
+        data = await self._send_query("/search/weekly")
+
+        if data["error"] == 309 and any(day["solutionId"] for day in data["days"]):
+            logger.warning(f"Error 309 response contains solutions, data={data}")
+
+        for day in data["days"]:
+            if day["solutionId"]:
+                yield Availability(
+                    dt.date.fromisoformat(day["date"]),
+                    int(day["perPassengerAwardPointsTotal"]),
+                    Availability.Fees(**day["perPassengerDisplayTotal"]),
+                )
