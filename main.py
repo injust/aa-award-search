@@ -126,39 +126,43 @@ async def run_task(task: Task) -> None:
         retry=retry_if_exception_type(httpx.TransportError),
         before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
     )
-    async def run_task_once() -> None:
+    async def run_task_once() -> list[Availability]:
         try:
-            availability = [
-                avail async for avail in task.query.search() if all(filter(avail) for filter in task.filters)
-            ]
+            return [avail async for avail in task.query.search() if all(filter(avail) for filter in task.filters)]
         except httpx.HTTPStatusError as e:
             if e.response.is_server_error:
                 logger.debug(f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}")
             raise e
-        else:
-            if (prev_availability := task.availability) is None:
-                logger.info(f"{task.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
-                if availability:
-                    beep()
-            else:
-                diff = Diff.compare(prev_availability, availability)
-
-                if any(change > " " for change, _ in diff.lines):
-                    logger.opt(colors=True).info(f"{task.name}\n{diff.colorized()}\n")
-                    if any(change == "+" for change, _ in diff.lines):
-                        beep(3)
-
-            task.availability = availability
 
     if not task.frequency:
-        await run_task_once()
+        availability = await run_task_once()
+
+        logger.info(f"{task.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
+        if availability:
+            beep()
+
         return
 
     await trio.sleep(random.uniform(0, task.frequency.total_seconds() / 2))
 
     while True:
         try:
-            await run_task_once()
+            prev_availability, task.availability = task.availability, await run_task_once()
+
+            if prev_availability is None:
+                logger.info(
+                    f"{task.name}\n{pretty_printer().pformat(list(map(Availability.asdict, task.availability)))}\n"
+                )
+                if task.availability:
+                    beep()
+            else:
+                diff = Diff.compare(prev_availability, task.availability)
+
+                if any(change > " " for change, _ in diff.lines):
+                    logger.opt(colors=True).info(f"{task.name}\n{diff.colorized()}\n")
+                    if any(change == "+" for change, _ in diff.lines):
+                        beep(3)
+
             await trio.sleep(task.frequency.total_seconds())
         except Exception as e:
             if isinstance(e, httpx.HTTPStatusError):
