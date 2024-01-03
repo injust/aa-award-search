@@ -28,6 +28,9 @@ from utils import beep
 
 type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
+SEARCH_RADIUS = dt.timedelta(days=6)
+SEARCH_WIDTH = SEARCH_RADIUS * 2 + dt.timedelta(days=1)
+
 
 @frozen
 class Diff:
@@ -67,15 +70,18 @@ class Job:
         destinations: Iterable[str] = field(
             validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
         )
-        dates: Iterable[dt.date]
+        date_range: tuple[dt.date, dt.date]
         passengers: int = 1
 
         def calendar(self) -> Iterable[CalendarQuery]:
-            for origin, destination, date in product(self.origins, self.destinations, self.dates):
-                yield CalendarQuery(origin, destination, date, self.passengers)
+            return NotImplemented  # TODO
 
         def weekly(self) -> Iterable[WeeklyQuery]:
-            for origin, destination, date in product(self.origins, self.destinations, self.dates):
+            dates = [min(self.date_range[1], self.date_range[0] + SEARCH_RADIUS)]
+            while dates[-1] + SEARCH_RADIUS < self.date_range[1]:
+                dates.append(min(self.date_range[1], dates[-1] + SEARCH_WIDTH))
+
+            for origin, destination, date in product(self.origins, self.destinations, dates):
                 yield WeeklyQuery(origin, destination, date, self.passengers)
 
     query: Query
@@ -85,18 +91,17 @@ class Job:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return (
-            f"{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {'/'.join(map(str, self.query.dates))}"
-        )
+        return f"{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {'-'.join(map((lambda date: date.strftime('%Y/%m/%d')), self.query.date_range))}"
 
     def tasks(self) -> Iterable[Task]:
-        for query in self.query.calendar():
-            yield Task(query, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
+        for query in self.query.weekly():
+            yield Task(query, self.query.date_range, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
 
 
 @define
 class Task:
     query: AvailabilityQuery
+    date_range: tuple[dt.date, dt.date]
     frequency: dt.timedelta | None = field(
         default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
     )
@@ -106,7 +111,7 @@ class Task:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{self.query.origin}-{self.query.destination}"
+        return f"{self.query.origin}-{self.query.destination} {'-'.join(map((lambda date: date.strftime('%Y/%m/%d')), self.date_range))}"
 
 
 async def run_job(job: Job, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
@@ -132,7 +137,12 @@ async def run_task(task: Task) -> None:
     )
     async def run_once() -> list[Availability]:
         try:
-            return [avail async for avail in task.query.search() if all(filter(avail) for filter in task.filters)]
+            return [
+                avail
+                async for avail in task.query.search()
+                if task.date_range[0] <= avail.date <= task.date_range[1]
+                and all(filter(avail) for filter in task.filters)
+            ]
         except httpx.HTTPStatusError as e:
             if e.response.is_server_error:
                 logger.debug(f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}")
