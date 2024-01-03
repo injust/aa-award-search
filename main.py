@@ -19,7 +19,7 @@ from tenacity import (
 )
 from trio_typing import TaskStatus
 
-from api import search_calendar
+from api import search_availability
 from classes import Availability, Diff, Job, MultiQuery, Task
 from config import httpx_client, pretty_printer
 from utils import beep
@@ -53,7 +53,9 @@ async def run_task(task: Task) -> None:
     async def run_task_once() -> list[Availability]:
         try:
             return [
-                avail async for avail in search_calendar(task.query) if all(filter(avail) for filter in task.filters)
+                avail
+                async for avail in search_availability(task.query)
+                if task.search_from <= avail.date <= task.search_to and all(filter(avail) for filter in task.filters)
             ]
         except httpx.HTTPStatusError as e:
             if e.response.status_code >= 500:
@@ -108,28 +110,19 @@ async def run_task(task: Task) -> None:
 async def main() -> None:
     ONE_MINUTE = dt.timedelta(minutes=1)
 
-    def date_eq(date: dt.date) -> Callable[[Availability], bool]:
-        return lambda avail: avail.date == date
-
-    def date_ge(date: dt.date) -> Callable[[Availability], bool]:
-        return lambda avail: avail.date >= date
-
-    def date_le(date: dt.date) -> Callable[[Availability], bool]:
-        return lambda avail: avail.date <= date
-
     def miles_eq(miles: int) -> Callable[[Availability], bool]:
         return lambda avail: avail.miles == miles
 
     jobs = [
         Job(
-            MultiQuery(["HKG"], ["DFW", "NYC", "ORD"], [dt.date(2024, 1, 25)], 3),
+            MultiQuery(["HKG"], ["DFW", "NYC", "ORD"], dt.date(2024, 1, 17), dt.date(2024, 2, 10), 3),
             ONE_MINUTE,
-            [date_ge(dt.date(2024, 1, 17)), miles_eq(70000)],
+            [miles_eq(70000)],
         ),  # pyright: ignore[reportGeneralTypeIssues]
         Job(
-            MultiQuery(["HKG"], ["NYC"], [dt.date(2024, 1, 25), dt.date(2024, 2, 5)]),
+            MultiQuery(["HKG"], ["NYC"], dt.date(2024, 1, 23), dt.date(2024, 2, 10)),
             ONE_MINUTE,
-            [date_ge(dt.date(2024, 1, 23)), miles_eq(70000)],
+            [miles_eq(70000)],
         ),  # pyright: ignore[reportGeneralTypeIssues]
     ]
 

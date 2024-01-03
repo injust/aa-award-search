@@ -75,23 +75,27 @@ class Job:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{'/'.join(self.multi_query.origins)}-{'/'.join(self.multi_query.destinations)} {'/'.join(map(str, self.multi_query.dates))}"
+        return f"{'/'.join(self.multi_query.origins)}-{'/'.join(self.multi_query.destinations)} {self.multi_query.search_from.strftime('%Y/%m/%d')}-{self.multi_query.search_to.strftime('%Y/%m/%d')}"
 
     def to_tasks(self) -> Iterable[Task]:
-        for query in self.multi_query.to_queries():
-            yield Task(query, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
+        searches = [self.multi_query.search_from + dt.timedelta(days=6)]
+        while searches[-1] + dt.timedelta(days=6) < self.multi_query.search_to:
+            searches.append(searches[-1] + dt.timedelta(days=13))
+
+        for origin, destination, date in product(self.multi_query.origins, self.multi_query.destinations, searches):
+            query = WeeklyQuery(origin, destination, date, self.multi_query.passengers)
+            yield Task(
+                query, self.multi_query.search_from, self.multi_query.search_to, self.frequency, self.filters
+            )  # pyright: ignore[reportGeneralTypeIssues]
 
 
 @frozen
 class MultiQuery:
     origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
-    dates: Iterable[dt.date]
+    search_from: dt.date
+    search_to: dt.date
     passengers: int = 1
-
-    def to_queries(self) -> Iterable[Query]:
-        for origin, destination, date in product(self.origins, self.destinations, self.dates):
-            yield Query(origin, destination, date, self.passengers)
 
 
 @frozen
@@ -104,9 +108,21 @@ class Query:
     )
 
 
+@frozen
+class CalendarQuery(Query):
+    pass
+
+
+@frozen
+class WeeklyQuery(Query):
+    pass
+
+
 @define
 class Task:
-    query: Query
+    query: CalendarQuery | WeeklyQuery
+    search_from: dt.date
+    search_to: dt.date
     frequency: dt.timedelta | None = field(
         default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
     )
@@ -116,4 +132,4 @@ class Task:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{self.query.origin}-{self.query.destination}"
+        return f"{self.query.origin}-{self.query.destination} {self.search_from.strftime('%Y/%m/%d')}-{self.search_to.strftime('%Y/%m/%d')}"

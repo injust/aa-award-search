@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import datetime as dt
+from functools import singledispatch
 from typing import Any, AsyncIterable
 
-from classes import Availability, Query
+from classes import Availability, CalendarQuery, Query, WeeklyQuery
 from config import httpx_client
 
 
@@ -41,7 +42,13 @@ async def _send_search_query(endpoint: str, query: Query) -> dict[str, Any]:
     return data
 
 
-async def search_calendar(query: Query) -> AsyncIterable[Availability]:
+@singledispatch
+def search_availability(query: Query) -> AsyncIterable[Availability]:
+    return NotImplemented
+
+
+@search_availability.register
+async def search_calendar(query: CalendarQuery) -> AsyncIterable[Availability]:
     data = await _send_search_query("/search/calendar", query)
 
     for month in data["calendarMonths"]:
@@ -58,7 +65,8 @@ async def search_calendar(query: Query) -> AsyncIterable[Availability]:
                     )
 
 
-async def search_weekly(query: Query) -> AsyncIterable[Availability]:
+@search_availability.register
+async def search_weekly(query: WeeklyQuery) -> AsyncIterable[Availability]:
     data = await _send_search_query("/search/weekly", query)
 
     for day in data["days"]:
