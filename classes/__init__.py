@@ -8,7 +8,7 @@ import trio
 from attrs import define, field, frozen, validators
 
 from classes.flights import Availability
-from classes.queries import CalendarQuery, MultiQuery, WeeklyQuery
+from classes.queries import BatchQuery, CalendarQuery, WeeklyQuery
 from config import pretty_printer
 
 DiffLine: TypeAlias = tuple[Literal[" ", "+", "-"], Availability]
@@ -46,7 +46,7 @@ class Diff:
 
 @define
 class Job:
-    multi_query: MultiQuery
+    batch_query: BatchQuery
     frequency: dt.timedelta | None = None
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
@@ -54,17 +54,17 @@ class Job:
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{'/'.join(self.multi_query.origins)}-{'/'.join(self.multi_query.destinations)} {self.multi_query.search_from.strftime('%Y/%m/%d')}-{self.multi_query.search_to.strftime('%Y/%m/%d')}"
+        return f"{'/'.join(self.batch_query.origins)}-{'/'.join(self.batch_query.destinations)} {self.batch_query.search_from.strftime('%Y/%m/%d')}-{self.batch_query.search_to.strftime('%Y/%m/%d')}"
 
     def to_tasks(self) -> Iterable[Task]:
-        searches = [self.multi_query.search_from + dt.timedelta(days=6)]
-        while searches[-1] + dt.timedelta(days=6) < self.multi_query.search_to:
+        searches = [self.batch_query.search_from + dt.timedelta(days=6)]
+        while searches[-1] + dt.timedelta(days=6) < self.batch_query.search_to:
             searches.append(searches[-1] + dt.timedelta(days=13))
 
-        for origin, destination, date in product(self.multi_query.origins, self.multi_query.destinations, searches):
-            query = WeeklyQuery(origin, destination, date, self.multi_query.passengers)
+        for origin, destination, date in product(self.batch_query.origins, self.batch_query.destinations, searches):
+            query = WeeklyQuery(origin, destination, date, self.batch_query.passengers)
             yield Task(
-                query, self.multi_query.search_from, self.multi_query.search_to, self.frequency, self.filters
+                query, self.batch_query.search_from, self.batch_query.search_to, self.frequency, self.filters
             )  # pyright: ignore[reportGeneralTypeIssues]
 
 

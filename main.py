@@ -22,7 +22,7 @@ from trio_typing import TaskStatus
 from api import search_availability
 from classes import Diff, Job, Task
 from classes.flights import Availability
-from classes.queries import MultiQuery
+from classes.queries import BatchQuery
 from config import httpx_client, pretty_printer
 from utils import beep
 
@@ -117,12 +117,12 @@ async def main() -> None:
 
     jobs = [
         Job(
-            MultiQuery(["HKG"], ["DFW", "NYC", "ORD"], dt.date(2024, 1, 17), dt.date(2024, 2, 10), 3),
+            BatchQuery(["HKG"], ["DFW", "NYC", "ORD"], dt.date(2024, 1, 17), dt.date(2024, 2, 10), 3),
             ONE_MINUTE,
             [miles_eq(70000)],
         ),  # pyright: ignore[reportGeneralTypeIssues]
         Job(
-            MultiQuery(["HKG"], ["NYC"], dt.date(2024, 1, 23), dt.date(2024, 2, 10)),
+            BatchQuery(["HKG"], ["NYC"], dt.date(2024, 1, 23), dt.date(2024, 2, 10)),
             ONE_MINUTE,
             [miles_eq(70000)],
         ),  # pyright: ignore[reportGeneralTypeIssues]

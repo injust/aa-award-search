@@ -7,7 +7,7 @@ from attrs import field, frozen, validators
 
 
 @frozen
-class MultiQuery:
+class BatchQuery:
     origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
     search_from: dt.date
