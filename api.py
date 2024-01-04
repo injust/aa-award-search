@@ -96,84 +96,53 @@ async def search_itinerary(query: ItineraryQuery) -> AsyncIterable[Itinerary]:
             for pricing_detail in slice["pricingDetail"]
             if pricing_detail["productAvailable"]
         }
-        yield Itinerary(dt.timedelta(minutes=slice["durationInMinutes"]), slice["alerts"], pricing)
 
-        slice = {
-            "origin": {"code": "LHR"},
-            "arrivesNextDay": 2,
-            "destination": {"code": "HKG"},
-            "stops": 1,
-            "departureDateTime": "2024-06-26T14:15:00.000+01:00",
-            "productDetails": [
-                {
-                    "bookingCode": "P",
-                    "cabinType": "PREMIUM_ECONOMY",
-                    "productType": "PREMIUM_ECONOMY",
-                    "alerts": [],
-                }
-            ],
-            "arrivalDateTime": "2024-06-28T10:10:00.000+08:00",
-            "connectingCities": [[{"code": "BLR"}]],
-            "segments": [
-                {
-                    "alerts": [],
-                    "flight": {"carrierCode": "BA", "flightNumber": "119"},
-                    "legs": [
-                        {
-                            "aircraft": {"code": "351", "name": "Airbus A350-1000", "shortName": "Airbus A350"},
-                            "arrivalDateTime": "2024-06-27T04:45:00.000+05:30",
-                            "connectionTimeInMinutes": 1255,
-                            "departureDateTime": "2024-06-26T14:15:00.000+01:00",
-                            "destination": {"code": "BLR"},
-                            "durationInMinutes": 600,
-                            "origin": {"code": "LHR"},
-                            "productDetails": [
-                                {
-                                    "bookingCode": "P",
-                                    "cabinType": "PREMIUM_ECONOMY",
-                                    "productType": "PREMIUM_ECONOMY",
-                                    "alerts": [],
-                                }
-                            ],
-                            "alerts": [],
-                            "arrivesNextDay": 1,
-                            "aircraftCode": "351",
-                        }
-                    ],
-                    "origin": {"code": "LHR"},
-                    "destination": {"code": "BLR"},
-                    "departureDateTime": "2024-06-26T14:15:00.000+01:00",
-                    "arrivalDateTime": "2024-06-27T04:45:00.000+05:30",
-                },
-                {
-                    "alerts": [],
-                    "flight": {"carrierCode": "CX", "flightNumber": "624"},
-                    "legs": [
-                        {
-                            "aircraft": {"code": "333", "name": "Airbus A330-300", "shortName": "Airbus A330"},
-                            "arrivalDateTime": "2024-06-28T10:10:00.000+08:00",
-                            "connectionTimeInMinutes": 0,
-                            "departureDateTime": "2024-06-28T01:40:00.000+05:30",
-                            "destination": {"code": "HKG"},
-                            "durationInMinutes": 360,
-                            "origin": {"code": "BLR"},
-                            "productDetails": [
-                                {
-                                    "bookingCode": "X",
-                                    "cabinType": "COACH",
-                                    "productType": "PREMIUM_ECONOMY",
-                                    "alerts": ["ALERTS.CLASS-OF-SERVICE-NOT-AVAILABLE"],
-                                }
-                            ],
-                            "alerts": ["ALERTS.OVERNIGHT"],
-                            "arrivesNextDay": 0,
-                            "aircraftCode": "333",
-                        }
-                    ],
-                    "origin": {"code": "BLR"},
-                    "destination": {"code": "HKG"},
-                    "departureDateTime": "2024-06-28T01:40:00.000+05:30",
-                    "arrivalDateTime": "2024-06-28T10:10:00.000+08:00",
-                },
-            ],
-        }
+        connections: list[str | tuple[str, str]] = []
+        for connection in slice["connectingCities"]:
+            if len(connection) == 1:
+                connections.append(connection[0]["code"])
+            elif len(connection) == 2:
+                connections.append((connection[0]["code"], connection[1]["code"]))
+            else:
+                raise ValueError(f"Unexpected value: connectingCities={slice['connectingCities']}")
+
+        segments: list[Itinerary.Route.Segment] = []
+        for segment in slice["segments"]:
+            if len(segment["legs"]) != 1:
+                raise ValueError()
+            leg = segment["legs"][0]
+            if (
+                segment["origin"]["code"] != leg["origin"]["code"]
+                or segment["destination"]["code"] != leg["destination"]["code"]
+                or segment["departureDateTime"] != leg["departureDateTime"]
+                or segment["arrivalDateTime"] != leg["arrivalDateTime"]
+            ):
+                raise ValueError(f"Mismatching segment and leg: segment={segment}")
+            elif leg["aircraft"]["code"] != leg["aircraftCode"]:
+                raise ValueError(
+                    f"Mismatching aircraft codes: aircraft={leg['aircraft']}, aircraftCode={leg['aircraftCode']!r}"
+                )
+            segments.append(
+                Itinerary.Route.Segment(
+                    segment["alerts"] + leg["alerts"],
+                    segment["origin"]["code"],
+                    segment["destination"]["code"],
+                    dt.datetime.fromisoformat(segment["departureDateTime"]),
+                    dt.datetime.fromisoformat(segment["arrivalDateTime"]),
+                    Itinerary.Route.Segment.Flight(segment["flight"]["carrierCode"], segment["flight"]["flightNumber"]),
+                    leg["aircraftCode"],
+                    dt.timedelta(minutes=leg["durationInMinutes"]),
+                    dt.timedelta(minutes=leg["connectionTimeInMinutes"]),
+                )
+            )
+
+        route = Itinerary.Route(
+            slice["origin"]["code"],
+            slice["destination"]["code"],
+            dt.datetime.fromisoformat(slice["departureDateTime"]),
+            dt.datetime.fromisoformat(slice["arrivalDateTime"]),
+            slice["stops"],
+            connections,
+            segments,
+        )
+        yield Itinerary(dt.timedelta(minutes=slice["durationInMinutes"]), slice["alerts"], pricing, route)

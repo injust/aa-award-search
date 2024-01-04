@@ -25,12 +25,36 @@ class Availability:
 @frozen
 class Itinerary:
     @frozen
-    class Segment:
-        pass
+    class Route:
+        @frozen
+        class Segment:
+            @frozen
+            class Flight:
+                carrier: str
+                number: int
+
+            alerts: Sequence[str]
+            origin: str
+            destination: str
+            departure: dt.datetime
+            arrival: dt.datetime
+            flight: Flight
+            aircraft: str
+            duration: dt.timedelta
+            connection_time: dt.timedelta
+
+        origin: str
+        destination: str
+        departure: dt.datetime
+        arrival: dt.datetime
+        stops: int
+        connections: Sequence[str | tuple[str, str]]
+        segments: Sequence[Segment]
 
     duration: dt.timedelta
     alerts: Sequence[str]
     pricing: Mapping[str, Pricing]
+    route: Route
 
 
 @frozen
