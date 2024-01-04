@@ -20,7 +20,9 @@ from tenacity import (
 from trio_typing import TaskStatus
 
 from api import search_availability
-from classes import Availability, Diff, Job, MultiQuery, Task
+from classes import Diff, Job, Task
+from classes.flights import Availability
+from classes.queries import MultiQuery
 from config import httpx_client, pretty_printer
 from utils import beep
 

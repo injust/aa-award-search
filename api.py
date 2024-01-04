@@ -6,7 +6,8 @@ from typing import Any, AsyncIterable
 
 from loguru import logger
 
-from classes import Availability, CalendarQuery, Itinerary, ItineraryQuery, Pricing, Query, WeeklyQuery
+from classes.flights import Availability, Itinerary, Pricing
+from classes.queries import CalendarQuery, ItineraryQuery, Query, WeeklyQuery
 from config import httpx_client
 
 

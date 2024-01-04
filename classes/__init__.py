@@ -2,29 +2,14 @@ from __future__ import annotations
 
 import datetime as dt
 from itertools import product
-from typing import Callable, Iterable, Literal, Mapping, Self, Sequence, TypeAlias
+from typing import Callable, Iterable, Literal, Self, Sequence, TypeAlias
 
-import attrs
 import trio
-from attrs import Attribute, define, field, frozen, validators
+from attrs import define, field, frozen, validators
 
+from classes.flights import Availability
+from classes.queries import CalendarQuery, MultiQuery, WeeklyQuery
 from config import pretty_printer
-
-
-@frozen
-class Availability:
-    date: dt.date
-    pricing: Pricing
-
-    def asdict(self) -> dict[str, object]:
-        return attrs.asdict(self, value_serializer=self._serialize)
-
-    @staticmethod
-    def _serialize(inst: type, attr: Attribute[object], value: object) -> object:
-        if isinstance(value, dt.date):
-            return value.isoformat()
-        return value
-
 
 DiffLine: TypeAlias = tuple[Literal[" ", "+", "-"], Availability]
 
@@ -59,17 +44,6 @@ class Diff:
         )
 
 
-@frozen
-class Itinerary:
-    @frozen
-    class Segment:
-        pass
-
-    duration: dt.timedelta
-    alerts: Sequence[str]
-    pricing: Mapping[str, Pricing]
-
-
 @define
 class Job:
     multi_query: MultiQuery
@@ -92,51 +66,6 @@ class Job:
             yield Task(
                 query, self.multi_query.search_from, self.multi_query.search_to, self.frequency, self.filters
             )  # pyright: ignore[reportGeneralTypeIssues]
-
-
-@frozen
-class MultiQuery:
-    origins: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
-    destinations: Iterable[str] = field(validator=validators.not_(validators.instance_of(str)))
-    search_from: dt.date
-    search_to: dt.date
-    passengers: int = 1
-
-
-@frozen
-class Query:
-    origin: str
-    destination: str
-    date: dt.date
-    passengers: int = field(
-        default=1, validator=[validators.ge(1), validators.le(9)]  # pyright: ignore[reportGeneralTypeIssues]
-    )
-
-
-@frozen
-class CalendarQuery(Query):
-    pass
-
-
-@frozen
-class ItineraryQuery(Query):
-    pass
-
-
-@frozen
-class WeeklyQuery(Query):
-    pass
-
-
-@frozen
-class Pricing:
-    @frozen
-    class Fees:
-        amount: float
-        currency: str
-
-    miles: int
-    fees: Fees
 
 
 @define
