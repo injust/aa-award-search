@@ -111,7 +111,7 @@ async def main() -> None:
     ONE_MINUTE = dt.timedelta(minutes=1)
 
     def miles_eq(miles: int) -> Callable[[Availability], bool]:
-        return lambda avail: avail.miles == miles
+        return lambda avail: avail.pricing.miles == miles
 
     jobs = [
         Job(

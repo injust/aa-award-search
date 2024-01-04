@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 from itertools import product
-from typing import Callable, Iterable, Literal, Self, Sequence, TypeAlias
+from typing import Callable, Iterable, Literal, Mapping, Self, Sequence, TypeAlias
 
 import attrs
 import trio
@@ -13,14 +13,8 @@ from config import pretty_printer
 
 @frozen
 class Availability:
-    @frozen
-    class Fees:
-        amount: float
-        currency: str
-
     date: dt.date
-    miles: int
-    fees: Fees
+    pricing: Pricing
 
     def asdict(self) -> dict[str, object]:
         return attrs.asdict(self, value_serializer=self._serialize)
@@ -63,6 +57,17 @@ class Diff:
             f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail.asdict())}</>"
             for change, avail in self.lines
         )
+
+
+@frozen
+class Itinerary:
+    @frozen
+    class Segment:
+        pass
+
+    duration: dt.timedelta
+    alerts: Sequence[str]
+    pricing: Mapping[str, Pricing]
 
 
 @define
@@ -114,8 +119,24 @@ class CalendarQuery(Query):
 
 
 @frozen
+class ItineraryQuery(Query):
+    pass
+
+
+@frozen
 class WeeklyQuery(Query):
     pass
+
+
+@frozen
+class Pricing:
+    @frozen
+    class Fees:
+        amount: float
+        currency: str
+
+    miles: int
+    fees: Fees
 
 
 @define

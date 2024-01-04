@@ -4,7 +4,9 @@ import datetime as dt
 from functools import singledispatch
 from typing import Any, AsyncIterable
 
-from classes import Availability, CalendarQuery, Query, WeeklyQuery
+from loguru import logger
+
+from classes import Availability, CalendarQuery, Itinerary, ItineraryQuery, Pricing, Query, WeeklyQuery
 from config import httpx_client
 
 
@@ -60,8 +62,7 @@ async def search_calendar(query: CalendarQuery) -> AsyncIterable[Availability]:
 
                     yield Availability(
                         dt.date.fromisoformat(day["date"]),
-                        solution["perPassengerAwardPoints"],
-                        Availability.Fees(**solution["perPassengerSaleTotal"]),
+                        Pricing(solution["perPassengerAwardPoints"], Pricing.Fees(**solution["perPassengerSaleTotal"])),
                     )
 
 
@@ -76,6 +77,102 @@ async def search_weekly(query: WeeklyQuery) -> AsyncIterable[Availability]:
 
             yield Availability(
                 dt.date.fromisoformat(day["date"]),
-                int(day["perPassengerAwardPointsTotal"]),
-                Availability.Fees(**day["perPassengerDisplayTotal"]),
+                Pricing(int(day["perPassengerAwardPointsTotal"]), Pricing.Fees(**day["perPassengerDisplayTotal"])),
             )
+
+
+async def search_itinerary(query: ItineraryQuery) -> AsyncIterable[Itinerary]:
+    data = await _send_search_query("/search/itinerary", query)
+
+    if notifications := data["responseMetadata"]["notifications"]:
+        logger.debug(f"notifications={notifications}, query={query}")
+
+    for slice in data["slices"]:
+        pricing = {
+            pricing_detail["productType"]: Pricing(
+                pricing_detail["perPassengerAwardPoints"], Pricing.Fees(**pricing_detail["perPassengerTaxesAndFees"])
+            )
+            for pricing_detail in slice["pricingDetail"]
+            if pricing_detail["productAvailable"]
+        }
+        yield Itinerary(dt.timedelta(minutes=slice["durationInMinutes"]), slice["alerts"], pricing)
+
+        slice = {
+            "origin": {"code": "LHR"},
+            "arrivesNextDay": 2,
+            "destination": {"code": "HKG"},
+            "stops": 1,
+            "departureDateTime": "2024-06-26T14:15:00.000+01:00",
+            "productDetails": [
+                {
+                    "bookingCode": "P",
+                    "cabinType": "PREMIUM_ECONOMY",
+                    "productType": "PREMIUM_ECONOMY",
+                    "alerts": [],
+                }
+            ],
+            "arrivalDateTime": "2024-06-28T10:10:00.000+08:00",
+            "connectingCities": [[{"code": "BLR"}]],
+            "segments": [
+                {
+                    "alerts": [],
+                    "flight": {"carrierCode": "BA", "flightNumber": "119"},
+                    "legs": [
+                        {
+                            "aircraft": {"code": "351", "name": "Airbus A350-1000", "shortName": "Airbus A350"},
+                            "arrivalDateTime": "2024-06-27T04:45:00.000+05:30",
+                            "connectionTimeInMinutes": 1255,
+                            "departureDateTime": "2024-06-26T14:15:00.000+01:00",
+                            "destination": {"code": "BLR"},
+                            "durationInMinutes": 600,
+                            "origin": {"code": "LHR"},
+                            "productDetails": [
+                                {
+                                    "bookingCode": "P",
+                                    "cabinType": "PREMIUM_ECONOMY",
+                                    "productType": "PREMIUM_ECONOMY",
+                                    "alerts": [],
+                                }
+                            ],
+                            "alerts": [],
+                            "arrivesNextDay": 1,
+                            "aircraftCode": "351",
+                        }
+                    ],
+                    "origin": {"code": "LHR"},
+                    "destination": {"code": "BLR"},
+                    "departureDateTime": "2024-06-26T14:15:00.000+01:00",
+                    "arrivalDateTime": "2024-06-27T04:45:00.000+05:30",
+                },
+                {
+                    "alerts": [],
+                    "flight": {"carrierCode": "CX", "flightNumber": "624"},
+                    "legs": [
+                        {
+                            "aircraft": {"code": "333", "name": "Airbus A330-300", "shortName": "Airbus A330"},
+                            "arrivalDateTime": "2024-06-28T10:10:00.000+08:00",
+                            "connectionTimeInMinutes": 0,
+                            "departureDateTime": "2024-06-28T01:40:00.000+05:30",
+                            "destination": {"code": "HKG"},
+                            "durationInMinutes": 360,
+                            "origin": {"code": "BLR"},
+                            "productDetails": [
+                                {
+                                    "bookingCode": "X",
+                                    "cabinType": "COACH",
+                                    "productType": "PREMIUM_ECONOMY",
+                                    "alerts": ["ALERTS.CLASS-OF-SERVICE-NOT-AVAILABLE"],
+                                }
+                            ],
+                            "alerts": ["ALERTS.OVERNIGHT"],
+                            "arrivesNextDay": 0,
+                            "aircraftCode": "333",
+                        }
+                    ],
+                    "origin": {"code": "BLR"},
+                    "destination": {"code": "HKG"},
+                    "departureDateTime": "2024-06-28T01:40:00.000+05:30",
+                    "arrivalDateTime": "2024-06-28T10:10:00.000+08:00",
+                },
+            ],
+        }
