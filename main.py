@@ -4,14 +4,15 @@ import datetime as dt
 import random
 import sys
 from collections.abc import Callable, Iterable, Sequence
+from itertools import product
 
 import httpx
 import trio
-from attrs import define, field, validators
+from attrs import define, field, frozen, validators
 from loguru import logger
 from trio_typing import TaskStatus
 
-from api import Query
+import api
 from config import pretty_printer
 from flights import Availability
 from utils import beep, compute_diff
@@ -19,68 +20,96 @@ from utils import beep, compute_diff
 
 @define
 class Job:
+    @frozen
+    class Query:
+        origins: Iterable[str] = field(validator=[validators.min_len(1), validators.not_(validators.instance_of(str))])
+        destinations: Iterable[str] = field(
+            validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
+        )
+        date: dt.date
+
+        def queries(self) -> Iterable[api.Query]:
+            for origin, destination in product(self.origins, self.destinations):
+                yield api.Query(origin, destination, self.date)
+
     query: Query
-    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    frequency: dt.timedelta
     filters: Iterable[Callable[[Availability], bool]] = ()
     name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
-    availability: Sequence[Availability] | None = None
 
     @name.default  # pyright: ignore[reportGeneralTypeIssues]
     def _default_name(self) -> str:
-        return f"{self.query.origin}-{self.query.destination}"
+        return f"{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.date}"
+
+    def tasks(self) -> Iterable[Task]:
+        for query in self.query.queries():
+            yield Task(query, self.frequency, self.filters)
+
+
+@define
+class Task:
+    query: api.Query
+    frequency: dt.timedelta = field(validator=validators.ge(dt.timedelta(minutes=1)))
+    filters: Iterable[Callable[[Availability], bool]] = ()
+    availability: Sequence[Availability] | None = None
 
 
 async def run_job(
     job: Job, httpx_client: httpx.AsyncClient, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED
 ) -> None:
     with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
-        task_status.started(scope)
+        async with trio.open_nursery() as nursery:
+            for task in job.tasks():
+                nursery.start_soon(run_task, task, httpx_client)
+            task_status.started(scope)
 
-        await trio.sleep(random.uniform(0, job.frequency.total_seconds() / 2))
 
-        while True:
-            try:
-                availability = [
-                    avail
-                    async for avail in job.query.search(httpx_client)
-                    if all(filter(avail) for filter in job.filters)
-                ]
-            except httpx.TransportError as e:
-                logger.warning(f"{e!r}")
-                beep()
-            except httpx.HTTPStatusError as e:
-                log = logger.warning if e.response.is_server_error else logger.error
-                log(f"{e!r}, request_content={e.request.content.decode()}")
-                beep()
-                if not e.response.is_server_error:
-                    break
-            except httpx.HTTPError as e:
-                logger.exception(f"{e!r}")
-                beep()
+async def run_task(task: Task, httpx_client: httpx.AsyncClient) -> None:
+    await trio.sleep(random.uniform(0, task.frequency.total_seconds() / 2))
+
+    while True:
+        try:
+            availability = [
+                avail
+                async for avail in task.query.search(httpx_client)
+                if all(filter(avail) for filter in task.filters)
+            ]
+        except httpx.TransportError as e:
+            logger.warning(f"{e!r}")
+            beep()
+        except httpx.HTTPStatusError as e:
+            log = logger.warning if e.response.is_server_error else logger.error
+            log(f"{e!r}, request_content={e.request.content.decode()}")
+            beep()
+            if not e.response.is_server_error:
                 break
-            except Exception as e:
-                logger.exception(f"{e!r}, query={job.query}")
-                beep()
-                break
-            else:
-                if (prev_availability := job.availability) is None:
-                    print(job.name)
-                    pretty_printer().pprint(list(map(Availability.asdict, availability)))
-                    print()
+        except httpx.HTTPError as e:
+            logger.exception(f"{e!r}")
+            beep()
+            break
+        except Exception as e:
+            logger.exception(f"{e!r}, query={task.query}")
+            beep()
+            break
+        else:
+            if (prev_availability := task.availability) is None:
+                print(f"{task.query.origin}-{task.query.destination}")
+                pretty_printer().pprint(list(map(Availability.asdict, availability)))
+                print()
 
-                    if availability:
-                        beep()
-                elif diff := list(compute_diff(prev_availability, availability)):
-                    print(job.name)
-                    print(*diff, sep="\n")
-                    print()
+                if availability:
+                    beep()
+            elif diff := list(compute_diff(prev_availability, availability)):
+                print(f"{task.query.origin}-{task.query.destination}")
+                print(*diff, sep="\n")
+                print()
 
-                    if any(line.startswith("+") for line in diff):
-                        beep(3)
+                if any(line.startswith("+") for line in diff):
+                    beep(3)
 
-                job.availability = availability
-            finally:
-                await trio.sleep(job.frequency.total_seconds())
+            task.availability = availability
+        finally:
+            await trio.sleep(task.frequency.total_seconds())
 
 
 @logger.catch(onerror=lambda _: sys.exit(1))
