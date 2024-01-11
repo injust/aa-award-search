@@ -7,7 +7,7 @@ from attrs import field, frozen
 from attrs.validators import ge, le
 from loguru import logger
 
-from flights import Availability
+from flights import Availability, Itinerary, Pricing
 from httpx_utils import httpx_client
 
 if TYPE_CHECKING:
@@ -91,8 +91,9 @@ class CalendarQuery(AvailabilityQuery):
                     if solution := day["solution"]:
                         yield Availability(
                             dt.date.fromisoformat(day["date"]),
-                            solution["perPassengerAwardPoints"],
-                            Availability.Fees(**solution["perPassengerSaleTotal"]),
+                            Pricing(
+                                solution["perPassengerAwardPoints"], Pricing.Fees(**solution["perPassengerSaleTotal"])
+                            ),
                         )
 
 
@@ -109,6 +110,102 @@ class WeeklyQuery(AvailabilityQuery):
             if day["solutionId"]:
                 yield Availability(
                     dt.date.fromisoformat(day["date"]),
-                    int(day["perPassengerAwardPointsTotal"]),
-                    Availability.Fees(**day["perPassengerDisplayTotal"]),
+                    Pricing(int(day["perPassengerAwardPointsTotal"]), Pricing.Fees(**day["perPassengerDisplayTotal"])),
                 )
+
+
+@frozen
+class ItineraryQuery(Query):
+    async def search(self) -> AsyncIterable[Itinerary]:
+        data = await self._send_query("/search/itinerary")
+
+        if notifications := data["responseMetadata"]["notifications"]:
+            logger.debug("notifications={}, query={}", notifications, self)
+
+        for slice_ in data["slices"]:
+            pricing = {
+                pricing_detail["productType"]: Pricing(
+                    pricing_detail["perPassengerAwardPoints"],
+                    Pricing.Fees(**pricing_detail["perPassengerTaxesAndFees"]),
+                )
+                for pricing_detail in slice_["pricingDetail"]
+                if pricing_detail["productAvailable"]
+            }
+
+            connections: list[str | tuple[str, str]] = []
+            for connection in slice_["connectingCities"]:
+                if len(connection) == 1:
+                    connections.append(connection[0]["code"])
+                elif len(connection) == 2:
+                    connections.append((connection[0]["code"], connection[1]["code"]))
+                else:
+                    msg = f"Unexpected connectingCities value: {connection}, connectingCities={slice_['connectingCities']}"
+                    raise ValueError(msg)
+
+            segments: list[Itinerary.Route.Segment] = []
+            for segment in slice_["segments"]:
+                if len(segment["legs"]) > 1:
+                    logger.warning("Segment contains multiple legs, segment={}", segment)
+                leg = segment["legs"][0]
+                if (
+                    segment["origin"]["code"] != leg["origin"]["code"]
+                    or segment["destination"]["code"] != leg["destination"]["code"]
+                    or segment["departureDateTime"] != leg["departureDateTime"]
+                    or segment["arrivalDateTime"] != leg["arrivalDateTime"]
+                ):
+                    logger.warning("Mismatching segment and leg, segment={}", segment)
+                elif leg["aircraft"]["code"] != leg["aircraftCode"]:
+                    logger.warning(
+                        "Mismatching aircraft code: {!r} != {!r}, aircraft={}, aircraftCode={!r}",
+                        leg["aircraft"]["code"],
+                        leg["aircraftCode"],
+                        leg["aircraft"],
+                        leg["aircraftCode"],
+                    )
+                product_details = [
+                    Itinerary.ProductDetail(
+                        product_detail["bookingCode"],
+                        product_detail["cabinType"],
+                        product_detail["productType"],
+                        product_detail["alerts"],
+                    )
+                    for product_detail in leg["productDetails"]
+                ]
+                segments.append(
+                    Itinerary.Route.Segment(
+                        segment["alerts"] + leg["alerts"],
+                        segment["origin"]["code"],
+                        segment["destination"]["code"],
+                        dt.datetime.fromisoformat(segment["departureDateTime"]),
+                        dt.datetime.fromisoformat(segment["arrivalDateTime"]),
+                        Itinerary.Route.Segment.Flight(
+                            segment["flight"]["carrierCode"], segment["flight"]["flightNumber"]
+                        ),
+                        leg["aircraftCode"],
+                        dt.timedelta(minutes=leg["durationInMinutes"]),
+                        dt.timedelta(minutes=leg["connectionTimeInMinutes"]),
+                        product_details,
+                    )
+                )
+
+            route = Itinerary.Route(
+                slice_["origin"]["code"],
+                slice_["destination"]["code"],
+                dt.datetime.fromisoformat(slice_["departureDateTime"]),
+                dt.datetime.fromisoformat(slice_["arrivalDateTime"]),
+                slice_["stops"],
+                connections,
+                segments,
+            )
+            product_details = [
+                Itinerary.ProductDetail(
+                    product_detail["bookingCode"],
+                    product_detail["cabinType"],
+                    product_detail["productType"],
+                    product_detail["alerts"],
+                )
+                for product_detail in slice_["productDetails"]
+            ]
+            yield Itinerary(
+                dt.timedelta(minutes=slice_["durationInMinutes"]), slice_["alerts"], pricing, route, product_details
+            )
