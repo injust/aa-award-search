@@ -5,7 +5,7 @@ import random
 import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
 from itertools import product
-from typing import Literal, Self
+from typing import ClassVar, Literal, Self
 
 import httpx
 import trio
@@ -21,23 +21,13 @@ from tenacity import (
 )
 from trio_typing import TaskStatus
 
-from api import AvailabilityQuery, CalendarQuery, WeeklyQuery
+from api import AvailabilityQuery, WeeklyQuery
 from config import httpx_client, pretty_printer
+from date_range import DayRange
 from flights import Availability
 from utils import beep
 
 type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
-
-SEARCH_LIMIT = dt.timedelta(days=331)
-SEARCH_RADIUS = dt.timedelta(days=6)
-SEARCH_WIDTH = SEARCH_RADIUS * 2 + dt.timedelta(days=1)
-
-
-def _constrain_query_date_range(date_range: tuple[dt.date, dt.date]) -> tuple[dt.date, dt.date]:
-    today = dt.date.today()
-    start = max(today, date_range[0])
-    stop = min(today + SEARCH_LIMIT, date_range[1])
-    return start, stop
 
 
 @frozen
@@ -74,23 +64,37 @@ class Diff:
 class Job:
     @frozen
     class Query:
+        @frozen
+        class QueryRange(DayRange):
+            SEARCH_LIMIT: ClassVar[dt.timedelta] = dt.timedelta(days=331)
+            SEARCH_RADIUS: ClassVar[dt.timedelta] = dt.timedelta(days=6)
+            SEARCH_WIDTH: ClassVar[dt.timedelta] = SEARCH_RADIUS * 2 + dt.timedelta(days=1)
+
+            def __attrs_post_init__(self) -> None:
+                if self.step <= dt.timedelta():
+                    raise ValueError("`step` must be positive")
+                elif not bool(self):
+                    raise ValueError("`QueryRange` must be a non-empty range")
+
+                if self.start < (min_start := dt.date.today()):
+                    object.__setattr__(self, "start", min_start)
+                if self.stop > (max_stop := dt.date.today() + self.SEARCH_LIMIT):
+                    object.__setattr__(self, "stop", max_stop)
+
+            def calendar_dates(self) -> Iterable[list[dt.date]]:
+                return NotImplemented
+
+            def weekly_dates(self) -> Iterable[dt.date]:
+                yield (date := min(self.stop, self.start + self.SEARCH_RADIUS))
+                while date + self.SEARCH_RADIUS < self.stop:
+                    yield (date := min(self.stop, date + self.SEARCH_WIDTH))
+
         origins: Iterable[str] = field(validator=[validators.min_len(1), validators.not_(validators.instance_of(str))])
         destinations: Iterable[str] = field(
             validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
         )
-        date_range: tuple[dt.date, dt.date] = field(converter=_constrain_query_date_range)
+        dates: QueryRange
         passengers: int = 1
-
-        def calendar(self) -> Iterable[CalendarQuery]:
-            return NotImplemented  # TODO
-
-        def weekly(self) -> Iterable[WeeklyQuery]:
-            dates = [min(self.date_range[1], self.date_range[0] + SEARCH_RADIUS)]
-            while dates[-1] + SEARCH_RADIUS < self.date_range[1]:
-                dates.append(min(self.date_range[1], dates[-1] + SEARCH_WIDTH))
-
-            for origin, destination, date in product(self.origins, self.destinations, dates):
-                yield WeeklyQuery(origin, destination, date, self.passengers)
 
     query: Query
     frequency: dt.timedelta | None = None
@@ -99,17 +103,22 @@ class Job:
 
     @property
     def name(self) -> str:
-        return f"{self.label} {'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {'-'.join(map((lambda date: date.strftime('%Y/%m/%d')), self.query.date_range))}".lstrip()
+        return f"{self.label} {'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.dates}".lstrip()
 
-    def tasks(self) -> Iterable[Task]:
-        for query in self.query.weekly():
+    def calendar_tasks(self) -> Iterable[Task]:
+        return NotImplemented
+
+    def weekly_tasks(self) -> Iterable[Task]:
+        for origin, destination, date in product(
+            self.query.origins, self.query.destinations, self.query.dates.weekly_dates()
+        ):
 
             def is_date_in_range(avail: Availability) -> bool:
-                return self.query.date_range[0] <= avail.date <= self.query.date_range[1]
+                return avail.date in self.query.dates
 
             yield Task(
-                f"{self.label} {query.origin}-{query.destination} {query.date}".lstrip(),
-                query,
+                f"{self.label} {origin}-{destination} {date}".lstrip(),
+                [WeeklyQuery(origin, destination, date, self.query.passengers)],
                 self.frequency,
                 [*self.filters, is_date_in_range],
             )
@@ -117,7 +126,7 @@ class Job:
     async def run(self, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
         with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
             async with trio.open_nursery() as nursery:
-                for task in self.tasks():
+                for task in self.weekly_tasks():
                     nursery.start_soon(task.run)
                 task_status.started(scope)
 
@@ -125,7 +134,7 @@ class Job:
 @define
 class Task:
     name: str
-    query: AvailabilityQuery
+    queries: Iterable[AvailabilityQuery]
     frequency: dt.timedelta | None = field(
         default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
     )
@@ -146,14 +155,19 @@ class Task:
             before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
         )
         async def run_once() -> list[Availability]:
-            try:
-                return [avail async for avail in self.query.search() if all(filter(avail) for filter in self.filters)]
-            except httpx.HTTPStatusError as e:
-                if e.response.is_server_error:
-                    logger.debug(
-                        f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
-                    )
-                raise e
+            for query in self.queries:
+                try:
+                    if availability := [
+                        avail async for avail in query.search() if all(filter(avail) for filter in self.filters)
+                    ]:
+                        return availability
+                except httpx.HTTPStatusError as e:
+                    if e.response.is_server_error:
+                        logger.debug(
+                            f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
+                        )
+                    raise e
+            return []
 
         if not self.frequency:
             availability = await run_once()
