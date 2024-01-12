@@ -1,0 +1,104 @@
+from __future__ import annotations
+
+import datetime as dt
+import operator
+from collections.abc import Iterator
+
+from attrs import Attribute, field, frozen
+from dateutil.relativedelta import relativedelta
+
+
+def _date_set_day_one(date: dt.date) -> dt.date:
+    return date.replace(day=1)
+
+
+def _relativedelta_normalize(delta: relativedelta) -> relativedelta:
+    return delta.normalized()
+
+
+@frozen
+class DayRange:
+    """Produces a sequence of `datetime.date` objects for every calendar day from `start` (inclusive) to `stop` (inclusive) by `step`."""
+
+    start: dt.date
+    stop: dt.date
+    step: dt.timedelta = dt.timedelta(days=1)
+
+    @step.validator  # pyright: ignore[reportGeneralTypeIssues]
+    def _check_step(self, attr: Attribute[dt.timedelta], value: dt.timedelta) -> None:
+        if not value:
+            raise ValueError("`step` must not be zero")
+        elif value % dt.timedelta(days=1):
+            raise ValueError("`step` must be a `dt.timedelta` object with only integer `weeks` and `days` values")
+
+    def __bool__(self) -> bool:
+        try:
+            next(iter(self))
+            return True
+        except StopIteration:
+            return False
+
+    def __contains__(self, key: object) -> bool:
+        return isinstance(key, dt.date) and (self.start <= key <= self.stop or self.start >= key >= self.stop)
+
+    def __iter__(self) -> Iterator[dt.date]:
+        increasing = self.step > dt.timedelta()
+        comp = operator.le if increasing else operator.ge
+        if not comp(self.start, self.stop):
+            return
+
+        yield (date := self.start)
+        while comp((date := date + self.step), self.stop):
+            yield date
+
+    def __str__(self) -> str:
+        return f"{self.start.strftime('%Y/%m/%d')}-{self.stop.strftime('%Y/%m/%d')}"
+
+
+@frozen
+class MonthRange:
+    """Produces a sequence of `datetime.date` objects for every calendar month from `start` (inclusive) to `stop` (inclusive) by `step`.
+
+    Each `datetime.date` object is set to the 1st day of the month.
+    """
+
+    start: dt.date = field(converter=_date_set_day_one)
+    stop: dt.date = field(converter=_date_set_day_one)
+    step: relativedelta = field(default=relativedelta(months=+1), converter=_relativedelta_normalize)
+
+    @step.validator  # pyright: ignore[reportGeneralTypeIssues]
+    def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
+        if not value:
+            raise ValueError("`step` must not be zero")
+        elif value != relativedelta(years=value.years, months=value.months):
+            raise ValueError("`step` must be a `relativedelta` object with only `years` and `months` values")
+
+    def __bool__(self) -> bool:
+        try:
+            next(iter(self))
+            return True
+        except StopIteration:
+            return False
+
+    def __contains__(self, key: object) -> bool:
+        return (
+            isinstance(key, dt.date)
+            and (self.start <= key <= self.stop or self.start >= key >= self.stop)
+            and key.day == 1
+        )
+
+    def __iter__(self) -> Iterator[dt.date]:
+        increasing = self.step.years * 12 + self.step.months > 0
+        comp = operator.le if increasing else operator.ge
+        if not comp(self.start, self.stop):
+            return
+
+        date = self.start
+        assert date.day == 1
+        yield date
+        while comp((date := date + self.step), self.stop):
+            assert date.day == 1
+            yield date
+
+    def __str__(self) -> str:
+        return f"{self.start.strftime('%Y/%m')}-{self.stop.strftime('%Y/%m')}"
