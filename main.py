@@ -195,9 +195,12 @@ async def run_task(task: Task) -> None:
 async def main() -> None:
     jobs: list[Job] = []
 
-    async with httpx_client(), trio.open_nursery() as nursery:
-        for job in jobs:
-            nursery.start_soon(run_job, job)
+    try:
+        async with httpx_client(), trio.open_nursery() as nursery:
+            for job in jobs:
+                nursery.start_soon(run_job, job)
+    except* KeyboardInterrupt:
+        logger.debug("Shutting down")
 
 
 if __name__ == "__main__":
