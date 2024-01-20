@@ -1,6 +1,7 @@
 import datetime as dt
 import sys
 from collections.abc import Callable, Collection, Iterable, Sequence
+from contextlib import suppress
 from itertools import product
 from random import randrange
 from typing import Literal, Self
@@ -193,9 +194,10 @@ async def run_task(task: Task) -> None:
 async def main() -> None:
     jobs: list[Job] = []
 
-    async with httpx_client(), trio.open_nursery() as nursery:
-        for job in jobs:
-            nursery.start_soon(run_job, job)
+    with suppress(KeyboardInterrupt):
+        async with httpx_client(), trio.open_nursery() as nursery:
+            for job in jobs:
+                nursery.start_soon(run_job, job)
 
 
 if __name__ == "__main__":
