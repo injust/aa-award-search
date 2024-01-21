@@ -85,31 +85,33 @@ class Job:
     query: Query
     frequency: dt.timedelta | None = None
     filters: Iterable[Callable[[Availability], bool]] = ()
-    name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
+    label: str = ""
 
-    @name.default  # pyright: ignore[reportGeneralTypeIssues]
-    def _default_name(self) -> str:
-        return f"{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {'-'.join(map((lambda date: date.strftime('%Y/%m/%d')), self.query.date_range))}"
+    @property
+    def name(self) -> str:
+        return f"{self.label}{self.label and ' '}{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {'-'.join(map((lambda date: date.strftime('%Y/%m/%d')), self.query.date_range))}"
 
     def tasks(self) -> Iterable[Task]:
         for query in self.query.weekly():
-            yield Task(query, self.query.date_range, self.frequency, self.filters)  # pyright: ignore[reportGeneralTypeIssues]
+            yield Task(
+                f"{self.label}{self.label and ' '}{query.origin}-{query.destination} {query.date}",
+                query,
+                self.query.date_range,
+                self.frequency,
+                self.filters,
+            )
 
 
 @define
 class Task:
+    name: str
     query: AvailabilityQuery
     date_range: tuple[dt.date, dt.date]
     frequency: dt.timedelta | None = field(
         default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
     )
     filters: Iterable[Callable[[Availability], bool]] = ()
-    name: str = field()  # pyright: ignore[reportGeneralTypeIssues]
     availability: Sequence[Availability] | None = None
-
-    @name.default  # pyright: ignore[reportGeneralTypeIssues]
-    def _default_name(self) -> str:
-        return f"{self.query.origin}-{self.query.destination} {'-'.join(map((lambda date: date.strftime('%Y/%m/%d')), self.date_range))}"
 
 
 async def run_job(job: Job, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
