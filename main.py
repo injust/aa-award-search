@@ -97,12 +97,15 @@ class Job:
 
     def tasks(self) -> Iterable[Task]:
         for query in self.query.weekly():
+
+            def date_in_range(avail: Availability) -> bool:
+                return self.query.date_range[0] <= avail.date <= self.query.date_range[1]
+
             yield Task(
                 f"{self.label or ''} {query.origin}-{query.destination} {query.date}".lstrip(),
                 query,
-                self.query.date_range,
                 self.frequency,
-                self.filters,
+                [*self.filters, date_in_range],
             )
 
 
@@ -110,7 +113,6 @@ class Job:
 class Task:
     name: str
     query: AvailabilityQuery
-    date_range: tuple[dt.date, dt.date]
     frequency: dt.timedelta | None = field(
         default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
     )
@@ -143,12 +145,7 @@ async def run_task(task: Task) -> None:
     )
     async def run_task_once() -> list[Availability]:
         try:
-            return [
-                avail
-                async for avail in task.query.search()
-                if task.date_range[0] <= avail.date <= task.date_range[1]
-                and all(filter(avail) for filter in task.filters)
-            ]
+            return [avail async for avail in task.query.search() if all(filter(avail) for filter in task.filters)]
         except httpx.HTTPStatusError as e:
             if e.response.is_server_error:
                 logger.debug(f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}")
