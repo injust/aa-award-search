@@ -106,6 +106,13 @@ class Job:
                 [*self.filters, is_date_in_range],
             )
 
+    async def run(self, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
+        with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
+            async with trio.open_nursery() as nursery:
+                for task in self.tasks():
+                    nursery.start_soon(task.run)
+                task_status.started(scope)
+
 
 @define
 class Task:
@@ -117,77 +124,72 @@ class Task:
     filters: Iterable[Callable[[Availability], bool]] = ()
     availability: Sequence[Availability] | None = None
 
+    async def run(self) -> None:
+        @retry(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(),
+            retry=retry_if_exception(lambda e: isinstance(e, httpx.HTTPStatusError) and e.response.is_server_error),
+            before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
+        )
+        @retry(
+            stop=stop_after_attempt(10),
+            wait=wait_exponential(max=32),
+            retry=retry_if_exception_type(httpx.TransportError),
+            before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
+        )
+        async def run_once() -> list[Availability]:
+            try:
+                return [avail async for avail in self.query.search() if all(filter(avail) for filter in self.filters)]
+            except httpx.HTTPStatusError as e:
+                if e.response.is_server_error:
+                    logger.debug(
+                        f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
+                    )
+                raise e
 
-async def run_job(job: Job, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
-    with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
-        async with trio.open_nursery() as nursery:
-            for task in job.tasks():
-                nursery.start_soon(run_task, task)
-            task_status.started(scope)
+        if not self.frequency:
+            availability = await run_once()
 
+            logger.info(f"{self.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
+            if availability:
+                beep()
 
-async def run_task(task: Task) -> None:
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(),
-        retry=retry_if_exception(lambda e: isinstance(e, httpx.HTTPStatusError) and e.response.is_server_error),
-        before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
-    )
-    @retry(
-        stop=stop_after_attempt(10),
-        wait=wait_exponential(max=32),
-        retry=retry_if_exception_type(httpx.TransportError),
-        before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
-    )
-    async def run_task_once() -> list[Availability]:
-        try:
-            return [avail async for avail in task.query.search() if all(filter(avail) for filter in task.filters)]
-        except httpx.HTTPStatusError as e:
-            if e.response.is_server_error:
-                logger.debug(f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}")
-            raise e
+            return
 
-    if not task.frequency:
-        availability = await run_task_once()
+        await trio.sleep(random.uniform(0, self.frequency.total_seconds() / 2))
 
-        logger.info(f"{task.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
-        if availability:
-            beep()
+        while True:
+            try:
+                prev_availability, self.availability = self.availability, await run_once()
 
-        return
+                if prev_availability is None:
+                    logger.info(
+                        f"{self.name}\n{pretty_printer().pformat(list(map(Availability.asdict, self.availability)))}\n"
+                    )
+                    if self.availability:
+                        beep()
+                else:
+                    diff = Diff.compare(prev_availability, self.availability)
 
-    await trio.sleep(random.uniform(0, task.frequency.total_seconds() / 2))
+                    if any(change > " " for change, _ in diff.lines):
+                        logger.opt(colors=True).info(f"{self.name}\n{diff.colorized()}\n")
+                        if any(change == "+" for change, _ in diff.lines):
+                            beep(3)
 
-    while True:
-        try:
-            prev_availability, task.availability = task.availability, await run_task_once()
+                await trio.sleep(self.frequency.total_seconds())
+            except Exception as e:
+                if isinstance(e, httpx.HTTPStatusError):
+                    assert not e.response.is_server_error
+                    logger.error(
+                        f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
+                    )
+                elif isinstance(e, httpx.HTTPError):
+                    logger.exception(f"{e!r}")
+                else:
+                    logger.exception(f"{e!r}, task={self}")
 
-            if prev_availability is None:
-                logger.info(
-                    f"{task.name}\n{pretty_printer().pformat(list(map(Availability.asdict, task.availability)))}\n"
-                )
-                if task.availability:
-                    beep()
-            else:
-                diff = Diff.compare(prev_availability, task.availability)
-
-                if any(change > " " for change, _ in diff.lines):
-                    logger.opt(colors=True).info(f"{task.name}\n{diff.colorized()}\n")
-                    if any(change == "+" for change, _ in diff.lines):
-                        beep(3)
-
-            await trio.sleep(task.frequency.total_seconds())
-        except Exception as e:
-            if isinstance(e, httpx.HTTPStatusError):
-                assert not e.response.is_server_error
-                logger.error(f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}")
-            elif isinstance(e, httpx.HTTPError):
-                logger.exception(f"{e!r}")
-            else:
-                logger.exception(f"{e!r}, task={task}")
-
-            beep()
-            break
+                beep()
+                break
 
 
 @logger.catch(onerror=lambda _: sys.exit(1))
@@ -197,7 +199,7 @@ async def main() -> None:
     try:
         async with httpx_client(), trio.open_nursery() as nursery:
             for job in jobs:
-                nursery.start_soon(run_job, job)
+                nursery.start_soon(job.run)  # pyright: ignore[reportGeneralTypeIssues]
     except* KeyboardInterrupt:
         logger.debug("Shutting down")
 
