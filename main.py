@@ -28,8 +28,16 @@ from utils import beep
 
 type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
+SEARCH_LIMIT = dt.timedelta(days=331)
 SEARCH_RADIUS = dt.timedelta(days=6)
 SEARCH_WIDTH = SEARCH_RADIUS * 2 + dt.timedelta(days=1)
+
+
+def _constrain_query_date_range(date_range: tuple[dt.date, dt.date]) -> tuple[dt.date, dt.date]:
+    today = dt.date.today()
+    start = max(today, date_range[0])
+    stop = min(today + SEARCH_LIMIT, date_range[1])
+    return start, stop
 
 
 @frozen
@@ -70,7 +78,7 @@ class Job:
         destinations: Iterable[str] = field(
             validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
         )
-        date_range: tuple[dt.date, dt.date]
+        date_range: tuple[dt.date, dt.date] = field(converter=_constrain_query_date_range)
         passengers: int = 1
 
         def calendar(self) -> Iterable[CalendarQuery]:
