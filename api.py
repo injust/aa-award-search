@@ -17,6 +17,12 @@ class Query(ABC):
     origin: str
     destination: str
     date: dt.date
+    max_stops: int | None = field(
+        default=None,
+        validator=validators.optional(
+            validators.and_(validators.ge(0), validators.le(3))  # pyright: ignore[reportGeneralTypeIssues]
+        ),
+    )
     passengers: int = field(
         default=1, validator=[validators.ge(1), validators.le(9)]  # pyright: ignore[reportGeneralTypeIssues]
     )
@@ -35,7 +41,7 @@ class Query(ABC):
                         "departureDate": self.date.isoformat(),
                         "destination": self.destination,
                         "destinationNearbyAirports": False,
-                        "maxStops": None,
+                        "maxStops": self.max_stops,
                         "origin": self.origin,
                         "originNearbyAirports": False,
                     }
