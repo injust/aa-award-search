@@ -11,6 +11,7 @@ from typing import Literal, Self
 import httpx
 import trio
 from attrs import define, field, frozen, validators
+from dateutil.relativedelta import relativedelta
 from loguru import logger
 from tenacity import (
     before_sleep_log,
@@ -22,9 +23,9 @@ from tenacity import (
 )
 from trio_typing import TaskStatus
 
-from api import AvailabilityQuery, WeeklyQuery
+from api import AvailabilityQuery, CalendarQuery, WeeklyQuery
 from config import httpx_client, pretty_printer
-from date_range import DayRange
+from date_range import DayRange, MonthRange
 from flights import Availability
 from utils import beep
 
@@ -83,7 +84,9 @@ class Job:
                     object.__setattr__(self, "stop", max_stop)
 
             def calendar_dates(self) -> Iterable[list[dt.date]]:
-                return NotImplemented
+                for first_day in MonthRange(self.start, self.stop):
+                    last_day = first_day + relativedelta(months=+1, days=-1)
+                    yield list(Job.Query.QueryRange(first_day, last_day).weekly_dates())
 
             def weekly_dates(self) -> Iterable[dt.date]:
                 yield (date := min(self.stop, self.start + self.SEARCH_RADIUS))
@@ -108,7 +111,19 @@ class Job:
         return f"{self.label or ''} {'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.dates}".lstrip()
 
     def calendar_tasks(self) -> Iterable[Task]:
-        return NotImplemented
+        for origin, destination, dates in product(
+            self.query.origins, self.query.destinations, self.query.dates.calendar_dates()
+        ):
+
+            def date_in_range(avail: Availability) -> bool:
+                return avail.date in self.query.dates
+
+            yield Task(
+                f"{self.label or ''} {origin}-{destination} {dates[0].strftime('%Y-%m')}".lstrip(),
+                [CalendarQuery(origin, destination, date, self.query.passengers) for date in dates],
+                self.frequency,
+                [*self.filters, date_in_range],
+            )
 
     def weekly_tasks(self) -> Iterable[Task]:
         for origin, destination, date in product(
@@ -128,7 +143,7 @@ class Job:
     async def run(self, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
         with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
             async with trio.open_nursery() as n:
-                for task in self.weekly_tasks():
+                for task in self.calendar_tasks():
                     n.start_soon(task.run)
                 task_status.started(scope)
 
