@@ -5,6 +5,7 @@ import random
 import sys
 from contextlib import aclosing
 from itertools import product
+from json import JSONDecodeError
 from typing import Callable, Iterable, Literal, Self, Sequence, TypeAlias, cast
 
 import httpx
@@ -183,9 +184,14 @@ class Task:
                         return availability
                 except httpx.HTTPStatusError as e:
                     if e.response.status_code >= 500:
-                        logger.debug(
-                            f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
-                        )
+                        try:
+                            logger.debug(
+                                f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
+                            )
+                        except JSONDecodeError:
+                            logger.debug(
+                                f"{e!r}, response_text={e.response.text}, request_content={e.request.content.decode()}"
+                            )
                     raise e
             else:
                 return []
