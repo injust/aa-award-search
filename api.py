@@ -17,8 +17,8 @@ class Query(ABC):
     origin: str
     destination: str
     date: dt.date
-    passengers: int = field(
-        default=1, validator=[validators.ge(1), validators.le(9)]  # pyright: ignore[reportGeneralTypeIssues]
+    passengers: int = field(  # pyright: ignore[reportCallIssue]
+        default=1, validator=[validators.ge(1), validators.le(9)]  # pyright: ignore[reportArgumentType]
     )
 
     async def _send_query(self, endpoint: str, httpx_client: httpx.AsyncClient = httpx_client()) -> dict[str, Any]:

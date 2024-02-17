@@ -140,7 +140,7 @@ class Job:
             )
 
     async def run(self, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
-        with trio.CancelScope() as scope:  # pyright: ignore[reportGeneralTypeIssues]
+        with trio.CancelScope() as scope:  # pyright: ignore[reportCallIssue]
             task_status.started(scope)
 
             async with trio.open_nursery() as n:
@@ -242,7 +242,7 @@ async def main() -> None:
     try:
         async with aclosing(httpx_client()), trio.open_nursery() as n:
             for job in jobs:
-                job.scope = await n.start(job.run)  # pyright: ignore[reportGeneralTypeIssues]
+                job.scope = await n.start(job.run)  # pyright: ignore[reportArgumentType]
     except* KeyboardInterrupt:
         logger.debug("Shutting down")
 
