@@ -22,7 +22,7 @@ class DayRange:
     stop: dt.date
     step: dt.timedelta = field(default=dt.timedelta(days=1))
 
-    @step.validator  # pyright: ignore[reportGeneralTypeIssues]
+    @step.validator  # pyright: ignore[reportAttributeAccessIssue]
     def _check_step(self, attr: Attribute[dt.timedelta], value: dt.timedelta) -> None:
         if not value:
             raise ValueError("`step` must be non-zero")
@@ -59,7 +59,7 @@ class MonthRange:
     stop: dt.date = field(converter=_date_set_day_one)
     step: relativedelta = field(default=relativedelta(months=+1), converter=_relativedelta_normalize)
 
-    @step.validator  # pyright: ignore[reportGeneralTypeIssues]
+    @step.validator  # pyright: ignore[reportAttributeAccessIssue]
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
         if not value:
             raise ValueError("`step` must be non-zero")
