@@ -24,10 +24,9 @@ from tenacity import (
 from trio_typing import TaskStatus
 
 from api import AvailabilityQuery, CalendarQuery, WeeklyQuery
-from config import httpx_client, pretty_printer
 from date_range import DayRange, MonthRange
 from flights import Availability
-from utils import beep
+from utils import beep, httpx_client, pretty_printer
 
 type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
