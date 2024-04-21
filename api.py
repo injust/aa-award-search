@@ -7,8 +7,8 @@ import httpx
 from attrs import field, frozen, validators
 from loguru import logger
 
-from config import httpx_client
 from flights import Availability
+from utils import httpx_client
 
 
 @frozen
