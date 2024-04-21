@@ -41,7 +41,7 @@ class Diff:
 
         lines: list[DiffLine] = []
         for date in sorted(old.keys() | new.keys()):
-            if old.get(date, None) == new.get(date, None):
+            if old.get(date) == new.get(date):
                 lines.append((" ", new[date]))
             else:
                 if date in old:
