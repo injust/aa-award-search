@@ -186,7 +186,7 @@ class Task:
             else:
                 return []
 
-        if not self.frequency:
+        if self.frequency is None:
             availability = await run_once()
 
             logger.info(f"{self.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
