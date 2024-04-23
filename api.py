@@ -66,7 +66,7 @@ class AvailabilityQuery(Query):
 @frozen
 class CalendarQuery(AvailabilityQuery):
     async def search(self) -> AsyncIterable[Availability]:
-        data = await self._send_query("/search/calendar")
+        data = await self._send_query("search/calendar")
 
         if data["error"] == 309 and any(
             day["solution"] for month in data["calendarMonths"] for week in month["weeks"] for day in week["days"]
@@ -87,7 +87,7 @@ class CalendarQuery(AvailabilityQuery):
 @frozen
 class WeeklyQuery(AvailabilityQuery):
     async def search(self) -> AsyncIterable[Availability]:
-        data = await self._send_query("/search/weekly")
+        data = await self._send_query("search/weekly")
 
         if data["error"] == 309 and any(day["solutionId"] for day in data["days"]):
             logger.warning(f"Error 309 response contains solutions, data={data}")
