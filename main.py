@@ -4,7 +4,6 @@ import datetime as dt
 import random
 import sys
 from collections.abc import Callable, Iterable, Sequence
-from contextlib import aclosing
 from itertools import product
 from typing import Literal, Self
 
@@ -238,7 +237,7 @@ async def main() -> None:
     jobs: list[Job] = []
 
     try:
-        async with aclosing(httpx_client()), trio.open_nursery() as n:
+        async with httpx_client(), trio.open_nursery() as n:
             for job in jobs:
                 job.scope = await n.start(job.run)  # pyright: ignore[reportArgumentType]
     except* KeyboardInterrupt:
