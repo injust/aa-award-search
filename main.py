@@ -51,7 +51,7 @@ class Diff:
 
         return cls(lines)
 
-    def colorized(self) -> str:
+    def colorize(self) -> str:
         LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
 
         return "\n".join(
@@ -209,7 +209,7 @@ class Task:
                     diff = Diff.compare(prev_availability, self.availability)
 
                     if any(change > " " for change, _ in diff.lines):
-                        logger.opt(colors=True).info(f"{self.name}\n{diff.colorized()}\n")
+                        logger.opt(colors=True).info(f"{self.name}\n{diff.colorize()}\n")
                         if any(change == "+" for change, _ in diff.lines):
                             beep(3)
 
