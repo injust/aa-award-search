@@ -71,7 +71,7 @@ class CalendarQuery(AvailabilityQuery):
         if data["error"] == 309 and any(
             day["solution"] for month in data["calendarMonths"] for week in month["weeks"] for day in week["days"]
         ):
-            logger.warning(f"Error 309 response contains solutions, data={data}")
+            logger.warning("Error 309 response contains solutions, data={}", data)
 
         for month in data["calendarMonths"]:
             for week in month["weeks"]:
@@ -90,7 +90,7 @@ class WeeklyQuery(AvailabilityQuery):
         data = await self._send_query("search/weekly")
 
         if data["error"] == 309 and any(day["solutionId"] for day in data["days"]):
-            logger.warning(f"Error 309 response contains solutions, data={data}")
+            logger.warning("Error 309 response contains solutions, data={}", data)
 
         for day in data["days"]:
             if day["solutionId"]:
