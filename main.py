@@ -180,7 +180,10 @@ class Task:
                 except httpx.HTTPStatusError as e:
                     if e.response.is_server_error:
                         logger.debug(
-                            f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
+                            "{!r}, response_json={}, request_content={}",
+                            e,
+                            e.response.json(),
+                            e.request.content.decode(),
                         )
                     raise e
             else:
@@ -189,7 +192,7 @@ class Task:
         if self.frequency is None:
             availability = await run_once()
 
-            logger.info(f"{self.name}\n{pretty_printer().pformat(list(map(Availability.asdict, availability)))}\n")
+            logger.info("{}\n{}\n", self.name, pretty_printer().pformat(list(map(Availability.asdict, availability))))
             if availability:
                 beep()
 
@@ -203,7 +206,9 @@ class Task:
 
                 if prev_availability is None:
                     logger.info(
-                        f"{self.name}\n{pretty_printer().pformat(list(map(Availability.asdict, self.availability)))}\n"
+                        "{}\n{}\n",
+                        self.name,
+                        pretty_printer().pformat(list(map(Availability.asdict, self.availability))),
                     )
                     if self.availability:
                         beep()
@@ -211,7 +216,7 @@ class Task:
                     diff = Diff.from_availability(prev_availability, self.availability)
 
                     if any(change > " " for change, _ in diff.lines):
-                        logger.opt(colors=True).info(f"{self.name}\n{diff.colorized}\n")
+                        logger.opt(colors=True).info(f"{{}}\n{diff.colorized}\n", self.name)
                         if any(change == "+" for change, _ in diff.lines):
                             beep(3)
 
@@ -220,12 +225,12 @@ class Task:
                 if isinstance(e, httpx.HTTPStatusError):
                     assert not e.response.is_server_error
                     logger.error(
-                        f"{e!r}, response_json={e.response.json()}, request_content={e.request.content.decode()}"
+                        "{!r}, response_json={}, request_content={}", e, e.response.json(), e.request.content.decode()
                     )
                 elif isinstance(e, httpx.HTTPError):
-                    logger.exception(f"{e!r}")
+                    logger.exception("{!r}", e)
                 else:
-                    logger.exception(f"{e!r}, task={self}")
+                    logger.exception("{!r}, task={}", e, self)
 
                 beep()
                 break
