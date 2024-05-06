@@ -107,7 +107,7 @@ class Job:
 
     @property
     def name(self) -> str:
-        return f"{self.label or ''} {'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.dates}".lstrip()
+        return f"{self.label or ""} {"/".join(self.query.origins)}-{"/".join(self.query.destinations)} {self.query.dates}".lstrip()
 
     def calendar_tasks(self) -> Iterable[Task]:
         for origin, destination, dates in product(
@@ -118,7 +118,7 @@ class Job:
                 return avail.date in self.query.dates
 
             yield Task(
-                f"{self.label or ''} {origin}-{destination} {dates[0].strftime('%Y-%m')}".lstrip(),
+                f"{self.label or ""} {origin}-{destination} {dates[0].strftime("%Y-%m")}".lstrip(),
                 [CalendarQuery(origin, destination, date, self.query.passengers) for date in dates],
                 self.frequency,
                 [*self.filters, date_in_range],
@@ -133,7 +133,7 @@ class Job:
                 return avail.date in self.query.dates
 
             yield Task(
-                f"{self.label or ''} {origin}-{destination} {date}".lstrip(),
+                f"{self.label or ""} {origin}-{destination} {date}".lstrip(),
                 [WeeklyQuery(origin, destination, date, self.query.passengers)],
                 self.frequency,
                 [*self.filters, date_in_range],
