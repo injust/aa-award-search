@@ -254,4 +254,4 @@ if __name__ == "__main__":
     logger.remove()
     logger.add(sys.stderr, diagnose=True)
 
-    trio.run(main, strict_exception_groups=True)
+    trio.run(main)
