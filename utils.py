@@ -27,9 +27,7 @@ def pretty_printer() -> PrettyPrinter:
     return PrettyPrinter(width=120, sort_dicts=False, underscore_numbers=True)
 
 
-def beep(n: int = 1) -> None:
-    INTERVAL = 0.1
-
-    for _ in range(n):
-        print("\a", end="", flush=True)
-        sleep(INTERVAL)
+def beep(times: int = 1, interval: float = 0.1) -> None:
+    for _ in range(times):
+        print(end="\a", flush=True)
+        sleep(interval)
