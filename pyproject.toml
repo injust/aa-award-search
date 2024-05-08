@@ -1,8 +1,27 @@
-[tool.black]
-line-length = 120
+[project]
+requires-python = ">=3.12"
 
 [tool.mypy]
 strict = true
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+extend-select = [
+    "E",   # pycodestyle
+    "F",   # Pyflakes
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "I",   # isort
+    "RUF", # Ruff-specific rules
+]
+ignore = ["E501", "RUF200"]
+
+[tool.ruff.lint.isort]
+# TODO(https://github.com/astral-sh/ruff/issues/9006): Unset this if the default changes
+split-on-trailing-comma = false
