@@ -1,6 +1,10 @@
 import datetime as dt
+from typing import TYPE_CHECKING
 
-from attrs import Attribute, asdict, frozen
+from attrs import asdict, frozen
+
+if TYPE_CHECKING:
+    from attrs import Attribute
 
 
 @frozen
@@ -15,7 +19,7 @@ class Availability:
     fees: Fees
 
     @staticmethod
-    def _serialize(inst: type, attr: Attribute[object], value: object) -> object:
+    def _serialize(_inst: type, _attr: Attribute[object], value: object) -> object:
         if isinstance(value, dt.date):
             return value.isoformat()
         return value

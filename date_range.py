@@ -1,9 +1,14 @@
 import datetime as dt
 import operator
-from collections.abc import Iterator
+from typing import TYPE_CHECKING, override
 
-from attrs import Attribute, field, frozen
+from attrs import field, frozen
 from dateutil.relativedelta import relativedelta
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from attrs import Attribute
 
 
 def _date_set_day_one(date: dt.date) -> dt.date:
@@ -26,7 +31,7 @@ class DayRange:
     def _check_step(self, attr: Attribute[dt.timedelta], value: dt.timedelta) -> None:
         if not value:
             raise ValueError(f"`{attr.name}` must be non-zero")
-        elif value % dt.timedelta(days=1):
+        if value % dt.timedelta(days=1):
             raise ValueError(
                 f"`{attr.name}` must be a `dt.timedelta` object with only integer `weeks` and `days` values"
             )
@@ -46,6 +51,7 @@ class DayRange:
             yield date
             date += self.step
 
+    @override
     def __str__(self) -> str:
         return f"{self.start.strftime('%Y/%m/%d')}-{self.stop.strftime('%Y/%m/%d')}"
 
@@ -65,7 +71,7 @@ class MonthRange:
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
         if not value:
             raise ValueError(f"`{attr.name}` must be non-zero")
-        elif value != relativedelta(years=value.years, months=value.months):
+        if value != relativedelta(years=value.years, months=value.months):
             raise ValueError(f"`{attr.name}` must be a `relativedelta` object with only `years` and `months` values")
 
     def __bool__(self) -> bool:
@@ -88,5 +94,6 @@ class MonthRange:
             yield date
             date += self.step
 
+    @override
     def __str__(self) -> str:
         return f"{self.start.strftime('%Y/%m')}-{self.stop.strftime('%Y/%m')}"
