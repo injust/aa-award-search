@@ -3,12 +3,15 @@ from __future__ import annotations
 import datetime as dt
 import random
 import sys
+from asyncio import CancelledError
 from collections.abc import Callable, Collection, Iterable, Sequence
 from itertools import product
 from typing import ClassVar, Literal, Self
 
+import anyio
 import httpx
-import trio
+from anyio import TASK_STATUS_IGNORED, CancelScope, create_task_group
+from anyio.abc import TaskStatus
 from attrs import define, field, frozen, validators
 from dateutil.relativedelta import relativedelta
 from loguru import logger
@@ -20,7 +23,6 @@ from tenacity import (
     stop_after_attempt,
     wait_exponential,
 )
-from trio_typing import TaskStatus
 
 from api import AvailabilityQuery, CalendarQuery, WeeklyQuery
 from date_range import DayRange, MonthRange
@@ -137,11 +139,11 @@ class Job:
                 [*self.filters, is_date_in_range],
             )
 
-    async def run(self, *, task_status: TaskStatus[trio.CancelScope] = trio.TASK_STATUS_IGNORED) -> None:
-        with trio.CancelScope() as scope:  # pyright: ignore[reportCallIssue]
-            async with trio.open_nursery() as nursery:
+    async def run(self, *, task_status: TaskStatus[CancelScope] = TASK_STATUS_IGNORED) -> None:
+        with CancelScope() as scope:
+            async with create_task_group() as task_group:
                 for task in self.calendar_tasks():
-                    nursery.start_soon(task.run)
+                    task_group.start_soon(task.run)
                 task_status.started(scope)
 
 
@@ -195,7 +197,7 @@ class Task:
 
             return
 
-        await trio.sleep(random.uniform(0, self.frequency.total_seconds() / 2))
+        await anyio.sleep(random.uniform(0, self.frequency.total_seconds() / 2))
 
         while True:
             try:
@@ -217,7 +219,7 @@ class Task:
                         if any(change == "+" for change, _ in diff.lines):
                             beep(3)
 
-                await trio.sleep(self.frequency.total_seconds())
+                await anyio.sleep(self.frequency.total_seconds())
             except Exception as e:
                 if isinstance(e, httpx.HTTPStatusError):
                     assert not e.response.is_server_error
@@ -238,12 +240,12 @@ async def main() -> None:
     jobs: list[Job] = []
 
     try:
-        async with httpx_client(), trio.open_nursery() as nursery:
+        async with httpx_client(), create_task_group() as task_group:
             for job in jobs:
-                nursery.start_soon(job.run)  # pyright: ignore[reportArgumentType]
-    except* KeyboardInterrupt:
+                task_group.start_soon(job.run)
+    except* (CancelledError, KeyboardInterrupt):
         logger.debug("Shutting down")
 
 
 if __name__ == "__main__":
-    trio.run(main)
+    anyio.run(main)
