@@ -4,14 +4,12 @@ import datetime as dt
 import random
 import sys
 from asyncio import CancelledError
-from collections.abc import Callable, Collection, Iterable, Sequence
 from itertools import product
-from typing import ClassVar, Literal, Self
+from typing import TYPE_CHECKING, ClassVar, Literal, Self
 
 import anyio
 import httpx
 from anyio import TASK_STATUS_IGNORED, CancelScope, create_task_group
-from anyio.abc import TaskStatus
 from attrs import define, field, frozen, validators
 from dateutil.relativedelta import relativedelta
 from loguru import logger
@@ -29,7 +27,12 @@ from date_range import DayRange, MonthRange
 from flights import Availability
 from utils import beep, httpx_client, pretty_printer
 
-type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Iterable, Sequence
+
+    from anyio.abc import TaskStatus
+
+    type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
 
 @frozen
@@ -75,7 +78,7 @@ class Job:
             def __attrs_post_init__(self) -> None:
                 if self.step <= dt.timedelta():
                     raise ValueError("`step` must be positive")
-                elif not self:
+                if not self:
                     raise ValueError("`QueryRange` must be a non-empty range")
 
                 if self.start < (min_start := dt.date.today()):
@@ -185,7 +188,7 @@ class Task:
                             e.response.json(),
                             e.request.content.decode(),
                         )
-                    raise e
+                    raise
             return []
 
         if self.frequency is None:
