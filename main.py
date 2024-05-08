@@ -105,6 +105,7 @@ class Job:
         origins: Collection[str] = field(validator=[min_len(1), not_(instance_of(str))])
         destinations: Collection[str] = field(validator=[min_len(1), not_(instance_of(str))])
         dates: QueryRange
+        max_stops: int | None = None
         passengers: int = 1
 
     query: Query
@@ -122,7 +123,10 @@ class Job:
 
             yield Task(
                 f"{self.label}{self.label and ' '}{origin}-{destination} {dates[0]:%Y-%m}",
-                [CalendarQuery(origin, destination, date, self.query.passengers) for date in dates],
+                [
+                    CalendarQuery(origin, destination, date, self.query.max_stops, self.query.passengers)
+                    for date in dates
+                ],
                 self.frequency,
                 [*self.filters, is_date_in_range],
             )
@@ -137,7 +141,7 @@ class Job:
 
             yield Task(
                 f"{self.label}{self.label and ' '}{origin}-{destination} {date}",
-                [WeeklyQuery(origin, destination, date, self.query.passengers)],
+                [WeeklyQuery(origin, destination, date, self.query.max_stops, self.query.passengers)],
                 self.frequency,
                 [*self.filters, is_date_in_range],
             )
