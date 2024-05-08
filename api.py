@@ -40,9 +40,15 @@ class Query(ABC):
                         "originNearbyAirports": False,
                     }
                 ],
-                "tripOptions": {"searchType": "Award", "corporateBooking": False, "locale": "en_US"},
+                "tripOptions": {
+                    "corporateBooking": False,
+                    "fareType": "Lowest",
+                    "locale": "en_US",
+                    "pointOfSale": None,
+                    "searchType": "Award",
+                },
                 "loyaltyInfo": None,
-                "version": "",
+                "version": "cfr",
                 "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
             },
         )
