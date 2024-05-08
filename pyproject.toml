@@ -2,7 +2,6 @@
 line-length = 120
 
 [tool.mypy]
-plugins = "trio_typing.plugin"
 strict = true
 
 [tool.ruff]
