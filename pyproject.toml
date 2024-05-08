@@ -1,8 +1,87 @@
-[tool.black]
-line-length = 120
+[project]
+requires-python = ">=3.13"
 
 [tool.mypy]
+enable_error_code = [
+    "deprecated",
+    "exhaustive-match",
+    "explicit-override",
+    "ignore-without-code",
+    "possibly-undefined",
+    "redundant-expr",
+    "redundant-self",
+    "truthy-bool",
+    "unimported-reveal",
+    "unused-awaitable",
+]
 strict = true
+warn_unreachable = true
 
 [tool.ruff]
 line-length = 120
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+extend-select = [
+    "ASYNC", # flake8-async
+    "FBT",   # flake8-boolean-trap
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "T10",   # flake8-debugger
+    "EXE",   # flake8-executable
+    "FA",    # flake8-future-annotations
+    "ICN",   # flake8-import-conventions
+    "LOG",   # flake8-logging
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "RSE",   # flake8-raise
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
+    "SLOT",  # flake8-slots
+    "TID",   # flake8-tidy-imports
+    "TD",    # flake8-todos
+    "TC",    # flake8-type-checking
+    "ARG",   # flake8-unused-arguments
+    "PTH",   # flake8-use-pathlib
+    "FLY",   # flynt
+    "I",     # isort
+    "N",     # pep8-naming
+    "PERF",  # Perflint
+    "E",     # pycodestyle
+    "W",     # pycodestyle
+    "F",     # Pyflakes
+    "PGH",   # pygrep-hooks
+    "PL",    # Pylint
+    "UP",    # pyupgrade
+    "FURB",  # refurb
+    "RUF",   # Ruff-specific rules
+    "TRY",   # tryceratops
+]
+ignore = [
+    "E501",
+    "N806",
+    "PLE1205",
+    "PLR0911",
+    "PLR0912",
+    "PLR0915",
+    "PLR2004",
+    "PLW0603",
+    "RUF200",
+    "TD002",
+    "TD003",
+    "TD004",
+    "TD005",
+    "TRY003",
+    "TRY400",
+]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]
+# TODO(https://github.com/astral-sh/ruff/issues/9006): Unset this if the default changes
+split-on-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
+# TODO(Ruff 2026): Remove when https://github.com/astral-sh/ruff/pull/18400 is promoted to stable
+"__init__.py" = ["PLC0414"]
