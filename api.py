@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import orjson as jsonlib
 from attrs import field, frozen
-from attrs.validators import ge, le
+from attrs.validators import ge, le, optional
 from loguru import logger
 
 from flights import Availability
@@ -21,6 +21,7 @@ class Query(ABC):
     origin: str
     destination: str
     date: dt.date
+    max_stops: int | None = field(default=None, validator=optional([ge(0), le(3)]))
     passengers: int = field(default=1, validator=[ge(1), le(9)])
 
     async def _send_query(self, endpoint: str) -> JSON:
@@ -35,7 +36,7 @@ class Query(ABC):
                     "departureDate": self.date.isoformat(),
                     "destination": self.destination,
                     "destinationNearbyAirports": False,
-                    "maxStops": None,
+                    "maxStops": self.max_stops,
                     "origin": self.origin,
                     "originNearbyAirports": False,
                 }
