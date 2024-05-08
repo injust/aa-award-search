@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import datetime as dt
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterable
-from typing import Any
+from typing import TYPE_CHECKING, Any, override
 
 from attrs import field, frozen, validators
 from loguru import logger
 
 from flights import Availability
 from utils import httpx_client
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterable
 
 
 @frozen
@@ -73,6 +75,7 @@ class AvailabilityQuery(Query):
 
 @frozen
 class CalendarQuery(AvailabilityQuery):
+    @override
     async def search(self) -> AsyncIterable[Availability]:
         data = await self._send_query("search/calendar")
 
@@ -94,6 +97,7 @@ class CalendarQuery(AvailabilityQuery):
 
 @frozen
 class WeeklyQuery(AvailabilityQuery):
+    @override
     async def search(self) -> AsyncIterable[Availability]:
         data = await self._send_query("search/weekly")
 
