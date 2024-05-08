@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
 from typing import Any
 
-import httpx
 from attrs import field, frozen, validators
 from loguru import logger
 
@@ -21,8 +20,8 @@ class Query(ABC):
         validator=[validators.ge(1), validators.le(9)],  # pyright: ignore[reportArgumentType]
     )
 
-    async def _send_query(self, endpoint: str, httpx_client: httpx.AsyncClient = httpx_client()) -> dict[str, Any]:
-        r = await httpx_client.post(
+    async def _send_query(self, endpoint: str) -> dict[str, Any]:
+        r = await httpx_client().post(
             endpoint,
             json={
                 "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
