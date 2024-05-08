@@ -6,7 +6,7 @@ import sys
 from asyncio import CancelledError
 from collections.abc import Callable, Iterable, Sequence
 from itertools import product
-from typing import Literal, Self
+from typing import Literal, Self, TypeAlias
 
 import httpx
 from anyio import TASK_STATUS_IGNORED, CancelScope, create_task_group, run, sleep
@@ -28,7 +28,8 @@ from date_range import DayRange, MonthRange
 from flights import Availability
 from utils import beep, httpx_client, pretty_printer
 
-type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
+# TODO(https://github.com/python/mypy/issues/15238): Switch back to PEP 695 type alias when supported by mypy
+DiffLine: TypeAlias = tuple[Literal[" ", "+", "-"], Availability]  # noqa: UP040
 
 
 @frozen
