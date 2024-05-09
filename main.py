@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal, Self
 
 import anyio
 import httpx
-from anyio import TASK_STATUS_IGNORED, CancelScope, create_task_group
+from anyio import create_task_group
 from attrs import define, field, frozen, validators
 from dateutil.relativedelta import relativedelta
 from loguru import logger
@@ -29,8 +29,6 @@ from utils import beep, httpx_client, pretty_printer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Iterable, Sequence
-
-    from anyio.abc import TaskStatus
 
     type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
@@ -65,7 +63,7 @@ class Diff:
         )
 
 
-@define
+@frozen
 class Job:
     @frozen
     class Query:
@@ -142,12 +140,10 @@ class Job:
                 [*self.filters, is_date_in_range],
             )
 
-    async def run(self, *, task_status: TaskStatus[CancelScope] = TASK_STATUS_IGNORED) -> None:
-        with CancelScope() as scope:
-            async with create_task_group() as task_group:
-                for task in self.calendar_tasks():
-                    task_group.start_soon(task.run)
-                task_status.started(scope)
+    async def run(self) -> None:
+        async with create_task_group() as task_group:
+            for task in self.calendar_tasks():
+                task_group.start_soon(task.run)
 
 
 @define
