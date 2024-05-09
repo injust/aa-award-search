@@ -9,8 +9,7 @@ from itertools import product
 from typing import Literal, Self
 
 import httpx
-from anyio import TASK_STATUS_IGNORED, CancelScope, create_task_group, run, sleep
-from anyio.abc import TaskStatus
+from anyio import create_task_group, run, sleep
 from attrs import define, field, frozen, validators
 from dateutil.relativedelta import relativedelta
 from loguru import logger
@@ -62,7 +61,7 @@ class Diff:
         )
 
 
-@define
+@frozen
 class Job:
     @frozen
     class Query:
@@ -104,7 +103,6 @@ class Job:
     frequency: dt.timedelta | None = None
     filters: Iterable[Callable[[Availability], bool]] = ()
     label: str | None = None
-    scope: CancelScope | None = None
 
     @property
     def name(self) -> str:
@@ -140,12 +138,10 @@ class Job:
                 [*self.filters, date_in_range],
             )
 
-    async def run(self, *, task_status: TaskStatus[CancelScope] = TASK_STATUS_IGNORED) -> None:
-        with CancelScope() as scope:
-            async with create_task_group() as tg:
-                for task in self.calendar_tasks():
-                    tg.start_soon(task.run)
-                task_status.started(scope)
+    async def run(self) -> None:
+        async with create_task_group() as tg:
+            for task in self.calendar_tasks():
+                tg.start_soon(task.run)
 
 
 @define
@@ -246,7 +242,7 @@ async def main() -> None:
     try:
         async with httpx_client(), create_task_group() as tg:
             for job in jobs:
-                job.scope = await tg.start(job.run)
+                tg.start_soon(job.run)
     except* (CancelledError, KeyboardInterrupt):
         logger.debug("Shutting down")
 
