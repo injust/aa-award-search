@@ -3,15 +3,14 @@ from __future__ import annotations
 import datetime as dt
 import random
 import sys
-from collections.abc import Callable, Collection, Iterable, Sequence
 from asyncio import CancelledError
+from collections.abc import Callable, Collection, Iterable, Sequence
 from itertools import product
 from typing import ClassVar, Literal, Self
 
 import anyio
 import httpx
-from anyio import TASK_STATUS_IGNORED, CancelScope, create_task_group
-from anyio.abc import TaskStatus
+from anyio import create_task_group
 from attrs import define, field, frozen, validators
 from dateutil.relativedelta import relativedelta
 from loguru import logger
@@ -62,7 +61,7 @@ class Diff:
         )
 
 
-@define
+@frozen
 class Job:
     @frozen
     class Query:
@@ -139,12 +138,10 @@ class Job:
                 [*self.filters, date_in_range],
             )
 
-    async def run(self, *, task_status: TaskStatus[CancelScope] = TASK_STATUS_IGNORED) -> None:
-        with CancelScope() as scope:
-            async with create_task_group() as task_group:
-                for task in self.calendar_tasks():
-                    task_group.start_soon(task.run)
-                task_status.started(scope)
+    async def run(self) -> None:
+        async with create_task_group() as task_group:
+            for task in self.calendar_tasks():
+                task_group.start_soon(task.run)
 
 
 @define
