@@ -4,7 +4,8 @@ import datetime as dt
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, override
 
-from attrs import field, frozen, validators
+from attrs import field, frozen
+from attrs.validators import ge, le
 from loguru import logger
 
 from flights import Availability
@@ -21,7 +22,7 @@ class Query(ABC):
     date: dt.date
     passengers: int = field(  # pyright: ignore[reportCallIssue]
         default=1,
-        validator=[validators.ge(1), validators.le(9)],  # pyright: ignore[reportArgumentType]
+        validator=[ge(1), le(9)],  # pyright: ignore[reportArgumentType]
     )
 
     async def _send_query(self, endpoint: str) -> dict[str, Any]:
