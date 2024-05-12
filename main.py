@@ -11,7 +11,8 @@ from typing import Literal, Self
 import anyio
 import httpx
 from anyio import create_task_group, run
-from attrs import define, field, frozen, validators
+from attrs import define, field, frozen
+from attrs.validators import ge, instance_of, min_len, not_, optional
 from dateutil.relativedelta import relativedelta
 from loguru import logger
 from tenacity import (
@@ -93,10 +94,8 @@ class Job:
                 while date + self.SEARCH_RADIUS < self.stop:
                     yield (date := min(self.stop, date + self.SEARCH_WIDTH))
 
-        origins: Iterable[str] = field(validator=[validators.min_len(1), validators.not_(validators.instance_of(str))])
-        destinations: Iterable[str] = field(
-            validator=[validators.min_len(1), validators.not_(validators.instance_of(str))]
-        )
+        origins: Iterable[str] = field(validator=[min_len(1), not_(instance_of(str))])
+        destinations: Iterable[str] = field(validator=[min_len(1), not_(instance_of(str))])
         dates: QueryRange
         passengers: int = 1
 
@@ -149,9 +148,7 @@ class Job:
 class Task:
     name: str
     queries: Iterable[AvailabilityQuery]
-    frequency: dt.timedelta | None = field(
-        default=None, validator=validators.optional(validators.ge(dt.timedelta(minutes=1)))
-    )
+    frequency: dt.timedelta | None = field(default=None, validator=optional(ge(dt.timedelta(minutes=1))))
     filters: Iterable[Callable[[Availability], bool]] = ()
     availability: Sequence[Availability] | None = None
 
