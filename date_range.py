@@ -36,9 +36,10 @@ class DayRange:
     def __bool__(self) -> bool:
         try:
             next(iter(self))
-            return True
         except StopIteration:
             return False
+        else:
+            return True
 
     def __contains__(self, key: object) -> bool:
         return isinstance(key, dt.date) and (self.start <= key <= self.stop or self.start >= key >= self.stop)
@@ -78,9 +79,10 @@ class MonthRange:
     def __bool__(self) -> bool:
         try:
             next(iter(self))
-            return True
         except StopIteration:
             return False
+        else:
+            return True
 
     def __contains__(self, key: object) -> bool:
         return (
