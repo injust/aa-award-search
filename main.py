@@ -197,7 +197,20 @@ class Task:
         while True:
             try:
                 prev_availability, self.availability = self.availability, await run_once()
+            except Exception as e:
+                if isinstance(e, httpx.HTTPStatusError):
+                    assert not e.response.is_server_error
+                    logger.error(
+                        "{!r}, response_json={}, request_content={}", e, e.response.json(), e.request.content.decode()
+                    )
+                elif isinstance(e, httpx.HTTPError):
+                    logger.exception("{!r}", e)
+                else:
+                    logger.exception("{!r}, task={}", e, self)
 
+                beep()
+                break
+            else:
                 if prev_availability is None:
                     logger.info(
                         "{}\n{}\n",
@@ -215,19 +228,6 @@ class Task:
                             beep(3)
 
                 await sleep(self.frequency.total_seconds())
-            except Exception as e:
-                if isinstance(e, httpx.HTTPStatusError):
-                    assert not e.response.is_server_error
-                    logger.error(
-                        "{!r}, response_json={}, request_content={}", e, e.response.json(), e.request.content.decode()
-                    )
-                elif isinstance(e, httpx.HTTPError):
-                    logger.exception("{!r}", e)
-                else:
-                    logger.exception("{!r}, task={}", e, self)
-
-                beep()
-                break
 
 
 @logger.catch(onerror=lambda _: sys.exit(1))
