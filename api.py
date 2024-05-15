@@ -56,7 +56,12 @@ class Query(ABC):
                 "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
             },
         )
-        r.raise_for_status()
+        if r.is_error:
+            (logger.debug if r.is_server_error else logger.error)(
+                "HTTP {}: response_json={}, request_content={}", r.status_code, r.json(), r.request.content.decode()
+            )
+            # Server errors are retried by `tenacity`
+            r.raise_for_status()
 
         data: dict[str, Any] = r.json()
         if (error := data["error"]) and error != "309":
