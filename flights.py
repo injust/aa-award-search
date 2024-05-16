@@ -20,9 +20,11 @@ class Availability:
 
     @staticmethod
     def _serialize(_inst: type, _attr: Attribute[object], value: object) -> object:
-        if isinstance(value, dt.date):
-            return value.isoformat()
-        return value
+        match value:
+            case dt.date():
+                return value.isoformat()
+            case _:
+                return value
 
     def asdict(self) -> dict[str, object]:
         return asdict(self, value_serializer=self._serialize)
