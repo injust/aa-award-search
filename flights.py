@@ -22,6 +22,8 @@ class Availability:
 
     @staticmethod
     def _serialize(inst: type, attr: Attribute[object], value: object) -> object:
-        if isinstance(value, dt.date):
-            return value.isoformat()
-        return value
+        match value:
+            case dt.date():
+                return value.isoformat()
+            case _:
+                return value
