@@ -22,7 +22,7 @@ class DayRange:
 
     start: dt.date
     stop: dt.date
-    step: dt.timedelta = field(default=dt.timedelta(days=1))
+    step: dt.timedelta = dt.timedelta(days=1)
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue]
     def _check_step(self, attr: Attribute[dt.timedelta], value: dt.timedelta) -> None:
@@ -36,9 +36,10 @@ class DayRange:
     def __bool__(self) -> bool:
         try:
             next(iter(self))
-            return True
         except StopIteration:
             return False
+        else:
+            return True
 
     def __contains__(self, key: object) -> bool:
         return isinstance(key, dt.date) and (self.start <= key <= self.stop or self.start >= key >= self.stop)
@@ -66,7 +67,7 @@ class MonthRange:
 
     start: dt.date = field(converter=_date_set_day_one)
     stop: dt.date = field(converter=_date_set_day_one)
-    step: relativedelta = field(converter=_relativedelta_normalize, default=relativedelta(months=+1))
+    step: relativedelta = field(default=relativedelta(months=+1), converter=_relativedelta_normalize)
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue]
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
@@ -78,9 +79,10 @@ class MonthRange:
     def __bool__(self) -> bool:
         try:
             next(iter(self))
-            return True
         except StopIteration:
             return False
+        else:
+            return True
 
     def __contains__(self, key: object) -> bool:
         return (

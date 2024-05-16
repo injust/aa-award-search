@@ -168,20 +168,10 @@ class Task:
         )
         async def run_once() -> list[Availability]:
             for query in self.queries:
-                try:
-                    if availability := [
-                        avail async for avail in query.search() if all(filter(avail) for filter in self.filters)
-                    ]:
-                        return availability
-                except httpx.HTTPStatusError as e:
-                    if e.response.is_server_error:
-                        logger.debug(
-                            "{!r}, response_json={}, request_content={}",
-                            e,
-                            e.response.json(),
-                            e.request.content.decode(),
-                        )
-                    raise e
+                if availability := [
+                    avail async for avail in query.search() if all(filter(avail) for filter in self.filters)
+                ]:
+                    return availability
             else:
                 return []
 
@@ -199,7 +189,18 @@ class Task:
         while True:
             try:
                 prev_availability, self.availability = self.availability, await run_once()
+            except Exception as e:
+                if isinstance(e, httpx.HTTPStatusError):
+                    # Already logged in `Query._send_query()`
+                    pass
+                elif isinstance(e, httpx.HTTPError):
+                    logger.exception("{!r}", e)
+                else:
+                    logger.exception("{!r}, task={}", e, self)
 
+                beep()
+                break
+            else:
                 if prev_availability is None:
                     logger.info(
                         "{}\n{}\n",
@@ -212,24 +213,11 @@ class Task:
                     diff = Diff.from_availability(prev_availability, self.availability)
 
                     if any(change > " " for change, _ in diff.lines):
-                        logger.opt(colors=True).info(f"{self.name}\n{diff.colorized}\n")
+                        logger.opt(colors=True).info(f"{{}}\n{diff.colorized}\n", self.name)
                         if any(change == "+" for change, _ in diff.lines):
                             beep(3)
 
                 await sleep(self.frequency.total_seconds())
-            except Exception as e:
-                if isinstance(e, httpx.HTTPStatusError):
-                    assert not e.response.is_server_error
-                    logger.error(
-                        "{!r}, response_json={}, request_content={}", e, e.response.json(), e.request.content.decode()
-                    )
-                elif isinstance(e, httpx.HTTPError):
-                    logger.exception("{!r}", e)
-                else:
-                    logger.exception("{!r}, task={}", e, self)
-
-                beep()
-                break
 
 
 @logger.catch(onerror=lambda _: sys.exit(1))
