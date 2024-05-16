@@ -191,13 +191,14 @@ class Task:
             try:
                 prev_availability, self.availability = self.availability, await run_once()
             except Exception as e:
-                if isinstance(e, httpx.HTTPStatusError):
-                    # Already logged in `Query._send_query()`
-                    pass
-                elif isinstance(e, httpx.HTTPError):
-                    logger.exception("{!r}", e)
-                else:
-                    logger.exception("{!r}, task={}", e, self)
+                match e:
+                    case httpx.HTTPStatusError():
+                        # Already logged in `Query._send_query()`
+                        pass
+                    case httpx.HTTPError():
+                        logger.exception("{!r}", e)
+                    case _:
+                        logger.exception("{!r}, task={}", e, self)
 
                 beep()
                 break
