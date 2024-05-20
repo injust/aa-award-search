@@ -56,7 +56,7 @@ class Query(ABC):
         )
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
-                "HTTP {}: response_json={}, request_content={}", r.status_code, r.json(), r.request.content.decode()
+                "HTTP {}: response_json={}, request_text={}", r.status_code, r.json(), r.request.content.decode()
             )
             # Server errors are retried by `tenacity`
             r.raise_for_status()
@@ -64,7 +64,7 @@ class Query(ABC):
         data: dict[str, Any] = r.json()
         if (error := data["error"]) and error != "309":
             raise ValueError(
-                f"Unexpected error code: {error!r}, response_json={data}, request_content={r.request.content.decode()}"
+                f"Unexpected error code: {error!r}, response_json={data}, request_text={r.request.content.decode()}"
             )
 
         return data
