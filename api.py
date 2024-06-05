@@ -24,48 +24,44 @@ class Query(ABC):
     )
 
     async def _send_query(self, endpoint: str) -> dict[str, Any]:
-        r = await httpx_client().post(
-            endpoint,
-            json={
-                "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
-                "passengers": [{"type": "adult", "count": self.passengers}],
-                "requestHeader": {"clientId": "AAcom"},
-                "slices": [
-                    {
-                        "allCarriers": True,
-                        "cabin": "BUSINESS,FIRST",
-                        "departureDate": self.date.isoformat(),
-                        "destination": self.destination,
-                        "destinationNearbyAirports": False,
-                        "maxStops": None,
-                        "origin": self.origin,
-                        "originNearbyAirports": False,
-                    }
-                ],
-                "tripOptions": {
-                    "corporateBooking": False,
-                    "fareType": "Lowest",
-                    "locale": "en_US",
-                    "pointOfSale": None,
-                    "searchType": "Award",
-                },
-                "loyaltyInfo": None,
-                "version": "cfr",
-                "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
+        json = {
+            "metadata": {"selectedProducts": [], "tripType": "OneWay", "udo": {}},
+            "passengers": [{"type": "adult", "count": self.passengers}],
+            "requestHeader": {"clientId": "AAcom"},
+            "slices": [
+                {
+                    "allCarriers": True,
+                    "cabin": "BUSINESS,FIRST",
+                    "departureDate": self.date.isoformat(),
+                    "destination": self.destination,
+                    "destinationNearbyAirports": False,
+                    "maxStops": None,
+                    "origin": self.origin,
+                    "originNearbyAirports": False,
+                }
+            ],
+            "tripOptions": {
+                "corporateBooking": False,
+                "fareType": "Lowest",
+                "locale": "en_US",
+                "pointOfSale": None,
+                "searchType": "Award",
             },
-        )
+            "loyaltyInfo": None,
+            "version": "cfr",
+            "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
+        }
+        r = await httpx_client().post(endpoint, json=json)
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
-                "HTTP {}: response_json={}, request_text={}", r.status_code, r.json(), r.request.content.decode()
+                "HTTP {}: response_json={}, request_json={}", r.status_code, r.json(), json
             )
             # Server errors are retried by `tenacity`
             r.raise_for_status()
 
         data: dict[str, Any] = r.json()
         if (error := data["error"]) and error != "309":
-            raise ValueError(
-                f"Unexpected error code: {error!r}, response_json={data}, request_text={r.request.content.decode()}"
-            )
+            raise ValueError(f"Unexpected error code: {error!r}, response_json={data}, request_json={json}")
         return data
 
 
