@@ -154,14 +154,12 @@ class Task:
 
     async def run(self) -> None:
         @retry(
-            sleep=sleep,
             stop=stop_after_attempt(3),
             wait=wait_exponential(),
             retry=retry_if_exception(lambda e: isinstance(e, httpx.HTTPStatusError) and e.response.is_server_error),
             before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]
         )
         @retry(
-            sleep=sleep,
             stop=stop_after_attempt(10),
             wait=wait_exponential(max=32),
             retry=retry_if_exception_type(httpx.TransportError),
