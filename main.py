@@ -5,6 +5,7 @@ import random
 import sys
 from asyncio import CancelledError
 from collections.abc import Callable, Iterable, Sequence
+from functools import cached_property
 from itertools import product
 from typing import Literal, Self, TypeAlias
 
@@ -53,7 +54,7 @@ class Diff:
 
         return cls(lines)
 
-    @property
+    @cached_property
     def colorized(self) -> str:
         LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
 
@@ -104,7 +105,7 @@ class Job:
     filters: Iterable[Callable[[Availability], bool]] = ()
     label: str | None = None
 
-    @property
+    @cached_property
     def name(self) -> str:
         return f"{self.label or ""} {"/".join(self.query.origins)}-{"/".join(self.query.destinations)} {self.query.dates}".lstrip()
 
