@@ -17,7 +17,7 @@ class Availability:
     miles: int
     fees: Fees
 
-    def asdict(self) -> dict[str, object]:
+    def _asdict(self) -> dict[str, object]:
         return attrs.asdict(self, value_serializer=self._serialize)
 
     @staticmethod
