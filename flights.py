@@ -24,5 +24,5 @@ class Availability:
             case _:
                 return value
 
-    def asdict(self) -> dict[str, object]:
+    def _asdict(self) -> dict[str, object]:
         return asdict(self, value_serializer=self._serialize)
