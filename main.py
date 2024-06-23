@@ -59,7 +59,7 @@ class Diff:
         LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
 
         return "\n".join(
-            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail.asdict())}</>"
+            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail._asdict())}</>"
             for change, avail in self.lines
         )
 
@@ -177,7 +177,7 @@ class Task:
         if self.frequency is None:
             availability = await run_once()
 
-            logger.info("{}\n{}\n", self.name, pretty_printer().pformat(list(map(Availability.asdict, availability))))
+            logger.info("{}\n{}\n", self.name, pretty_printer().pformat(list(map(Availability._asdict, availability))))
             if availability:
                 beep()
 
@@ -206,7 +206,7 @@ class Task:
                     logger.info(
                         "{}\n{}\n",
                         self.name,
-                        pretty_printer().pformat(list(map(Availability.asdict, self.availability))),
+                        pretty_printer().pformat(list(map(Availability._asdict, self.availability))),
                     )
                     if self.availability:
                         beep()
