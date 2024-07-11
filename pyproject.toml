@@ -1,6 +1,14 @@
 [project]
 requires-python = ">=3.14"
 
+[tool.basedpyright]
+reportAny = false
+reportExplicitAny = false
+reportPrivateUsage = false
+reportUnannotatedClassAttribute = false
+reportUnusedCallResult = false
+reportUnusedParameter = false
+
 [tool.mypy]
 enable_error_code = [
     "deprecated",
