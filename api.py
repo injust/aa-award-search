@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime as dt
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterable
-from typing import Any
+from typing import Any, override
 
 from attrs import field, frozen
 from attrs.validators import ge, le
@@ -75,6 +75,7 @@ class AvailabilityQuery(Query):
 
 @frozen
 class CalendarQuery(AvailabilityQuery):
+    @override
     async def search(self) -> AsyncIterable[Availability]:
         data = await self._send_query("search/calendar")
 
@@ -96,6 +97,7 @@ class CalendarQuery(AvailabilityQuery):
 
 @frozen
 class WeeklyQuery(AvailabilityQuery):
+    @override
     async def search(self) -> AsyncIterable[Availability]:
         data = await self._send_query("search/weekly")
 

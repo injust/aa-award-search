@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import operator
 from collections.abc import Iterator
+from typing import override
 
 from attrs import Attribute, field, frozen
 from dateutil.relativedelta import relativedelta
@@ -54,6 +55,7 @@ class DayRange:
         while comp((date := date + self.step), self.stop):
             yield date
 
+    @override
     def __str__(self) -> str:
         return f"{self.start.strftime("%Y/%m/%d")}-{self.stop.strftime("%Y/%m/%d")}"
 
@@ -104,5 +106,6 @@ class MonthRange:
             assert date.day == 1
             yield date
 
+    @override
     def __str__(self) -> str:
         return f"{self.start.strftime("%Y/%m")}-{self.stop.strftime("%Y/%m")}"
