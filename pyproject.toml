@@ -1,6 +1,14 @@
 [project]
 requires-python = ">=3.12"
 
+[tool.basedpyright]
+reportAny = false
+reportPrivateUsage = false
+reportUnknownArgumentType = false
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnusedCallResult = false
+
 [tool.mypy]
 strict = true
 

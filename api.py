@@ -18,10 +18,7 @@ class Query(ABC):
     origin: str
     destination: str
     date: dt.date
-    passengers: int = field(  # pyright: ignore[reportCallIssue]
-        default=1,
-        validator=[ge(1), le(9)],  # pyright: ignore[reportArgumentType]
-    )
+    passengers: int = field(default=1, validator=[ge(1), le(9)])
 
     async def _send_query(self, endpoint: str) -> dict[str, Any]:
         json = {
