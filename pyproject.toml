@@ -1,6 +1,13 @@
 [project]
 requires-python = ">=3.12"
 
+[tool.basedpyright]
+reportAny = false
+reportExplicitAny = false
+reportPrivateUsage = false
+reportUnannotatedClassAttribute = false
+reportUnusedCallResult = false
+
 [tool.mypy]
 strict = true
 
