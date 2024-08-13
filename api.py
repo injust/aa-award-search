@@ -1,5 +1,6 @@
 import datetime as dt
 from abc import ABC, abstractmethod
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, override
 
 from attrs import field, frozen
@@ -51,7 +52,7 @@ class Query(ABC):
         r = await httpx_client().post(endpoint, json=json)
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
-                "HTTP {}: response_json={}, request_json={}", r.status_code, r.json(), json
+                "{!r}: response_json={}, request_json={}", HTTPStatus(r.status_code), r.json(), json
             )
             # Server errors are retried by `tenacity`
             r.raise_for_status()
