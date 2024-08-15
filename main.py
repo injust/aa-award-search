@@ -118,7 +118,7 @@ class Job:
                 return avail.date in self.query.dates
 
             yield Task(
-                f"{self.label} {origin}-{destination} {dates[0].strftime('%Y-%m')}".lstrip(),
+                f"{self.label} {origin}-{destination} {dates[0]:%Y-%m}".lstrip(),
                 [CalendarQuery(origin, destination, date, self.query.passengers) for date in dates],
                 self.frequency,
                 [*self.filters, is_date_in_range],
