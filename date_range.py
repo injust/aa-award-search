@@ -54,7 +54,7 @@ class DayRange:
 
     @override
     def __str__(self) -> str:
-        return f"{self.start.strftime('%Y/%m/%d')}-{self.stop.strftime('%Y/%m/%d')}"
+        return f"{self.start:%Y/%m/%d)}-{self.stop:%Y/%m/%d)}"
 
 
 @frozen
@@ -100,4 +100,4 @@ class MonthRange:
 
     @override
     def __str__(self) -> str:
-        return f"{self.start.strftime('%Y/%m')}-{self.stop.strftime('%Y/%m')}"
+        return f"{self.start:%Y/%m)}-{self.stop:%Y/%m)}"
