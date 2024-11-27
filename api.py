@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, override
 
+import orjson as jsonlib
 from attrs import field, frozen
 from attrs.validators import ge, le
 from loguru import logger
@@ -49,15 +50,15 @@ class Query(ABC):
             "version": "cfr",
             "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
         }
-        r = await httpx_client().post(endpoint, json=json)
+        r = await httpx_client().post(endpoint, content=jsonlib.dumps(json))
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
-                "{!r}: response_json={}, request_json={}", HTTPStatus(r.status_code), r.json(), json
+                "{!r}: response_json={}, request_json={}", HTTPStatus(r.status_code), jsonlib.loads(r.content), json
             )
             # Server errors are retried by `tenacity`
             r.raise_for_status()
 
-        data: dict[str, Any] = r.json()
+        data: dict[str, Any] = jsonlib.loads(r.content)
         if (error := data["error"]) and error != "309":
             raise ValueError(f"Unexpected error code: {error!r}, response_json={data}, request_json={json}")
         return data
