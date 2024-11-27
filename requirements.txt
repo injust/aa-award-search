@@ -1,6 +1,6 @@
-anyio>=4.6.2
-attrs>=24.2.0
-httpx[http2]>=0.27.2
-loguru>=0.7.2
-python-dateutil>=2.9.0.post0
-tenacity>=9.0.0
+anyio~=4.6
+attrs~=24.2
+httpx[http2]~=0.27
+loguru~=0.7
+python-dateutil~=2.9
+tenacity~=9.0
