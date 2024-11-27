@@ -6,6 +6,7 @@ from collections.abc import Iterator
 from typing import override
 
 from attrs import Attribute, field, frozen
+from attrs.validators import instance_of, not_
 from dateutil.relativedelta import relativedelta
 
 
@@ -21,8 +22,8 @@ def _relativedelta_normalize(delta: relativedelta) -> relativedelta:
 class DayRange:
     """Produces a sequence of `datetime.date` objects for every calendar day from `start` (inclusive) to `stop` (inclusive) by `step`."""
 
-    start: dt.date
-    stop: dt.date
+    start: dt.date = field(validator=not_(instance_of(dt.datetime)))
+    stop: dt.date = field(validator=not_(instance_of(dt.datetime)))
     step: dt.timedelta = field(default=dt.timedelta(days=1))
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
@@ -67,8 +68,8 @@ class MonthRange:
     Each `datetime.date` object is set to the 1st day of the month.
     """
 
-    start: dt.date = field(converter=_date_set_day_one)
-    stop: dt.date = field(converter=_date_set_day_one)
+    start: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_date_set_day_one)
+    stop: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_date_set_day_one)
     step: relativedelta = field(default=relativedelta(months=+1), converter=_relativedelta_normalize)
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
