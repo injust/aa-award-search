@@ -235,6 +235,6 @@ async def main() -> None:
 
 if __name__ == "__main__":
     logger.remove()
-    logger.add(sys.stderr, diagnose=True)
+    logger.add(sys.stderr, diagnose=True, enqueue=True)
 
     run(main)
