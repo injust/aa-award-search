@@ -16,10 +16,6 @@ def _date_set_day_one(date: dt.date) -> dt.date:
     return date.replace(day=1)
 
 
-def _relativedelta_normalize(delta: relativedelta) -> relativedelta:
-    return delta.normalized()
-
-
 @frozen
 class DayRange:
     """Produces a sequence of `datetime.date` objects for every calendar day from `start` (inclusive) to `stop` (inclusive) by `step`."""
@@ -66,7 +62,7 @@ class MonthRange:
 
     start: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_date_set_day_one)
     stop: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_date_set_day_one)
-    step: relativedelta = field(default=relativedelta(months=+1), converter=_relativedelta_normalize)
+    step: relativedelta = field(default=relativedelta(months=+1), converter=relativedelta.normalized)  # type: ignore[misc]
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
