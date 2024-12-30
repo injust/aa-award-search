@@ -12,10 +12,6 @@ if TYPE_CHECKING:
     from attrs import Attribute
 
 
-def _date_set_day_one(date: dt.date) -> dt.date:
-    return date.replace(day=1)
-
-
 @frozen
 class DayRange:
     """Produces a sequence of `datetime.date` objects for every calendar day from `start` (inclusive) to `stop` (inclusive) by `step`."""
@@ -60,8 +56,12 @@ class MonthRange:
     Each `datetime.date` object is set to the 1st day of the month.
     """
 
-    start: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_date_set_day_one)
-    stop: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_date_set_day_one)
+    @staticmethod
+    def _set_day_one(date: dt.date) -> dt.date:
+        return date.replace(day=1)
+
+    start: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_set_day_one)  # type: ignore[misc]
+    stop: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_set_day_one)  # type: ignore[misc]
     step: relativedelta = field(default=relativedelta(months=+1), converter=relativedelta.normalized)  # type: ignore[misc]
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
