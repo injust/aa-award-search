@@ -29,7 +29,7 @@ from flights import Availability
 from utils import beep, httpx_client, pretty_printer
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Collection, Iterable, Sequence
+    from collections.abc import Callable, Collection, Generator, Iterable, Sequence
 
     type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
@@ -85,12 +85,12 @@ class Job:
                 if self.stop > (max_stop := dt.date.today() + self.SEARCH_LIMIT):
                     object.__setattr__(self, "stop", max_stop)
 
-            def calendar_dates(self) -> Iterable[list[dt.date]]:
+            def calendar_dates(self) -> Generator[list[dt.date]]:
                 for first_day in MonthRange(self.start, self.stop):
                     last_day = first_day + relativedelta(months=+1, days=-1)
                     yield list(Job.Query.QueryRange(first_day, last_day).weekly_dates())
 
-            def weekly_dates(self) -> Iterable[dt.date]:
+            def weekly_dates(self) -> Generator[dt.date]:
                 yield (date := min(self.stop, self.start + self.SEARCH_RADIUS))
                 while date + self.SEARCH_RADIUS < self.stop:
                     yield (date := min(self.stop, date + self.SEARCH_WIDTH))
@@ -109,7 +109,7 @@ class Job:
     def name(self) -> str:
         return f"{self.label} {'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.dates}".lstrip()
 
-    def calendar_tasks(self) -> Iterable[Task]:
+    def calendar_tasks(self) -> Generator[Task]:
         for origin, destination, dates in product(
             self.query.origins, self.query.destinations, self.query.dates.calendar_dates()
         ):
@@ -124,7 +124,7 @@ class Job:
                 [*self.filters, is_date_in_range],
             )
 
-    def weekly_tasks(self) -> Iterable[Task]:
+    def weekly_tasks(self) -> Generator[Task]:
         for origin, destination, date in product(
             self.query.origins, self.query.destinations, self.query.dates.weekly_dates()
         ):
