@@ -105,10 +105,6 @@ class Job:
     filters: Iterable[Callable[[Availability], bool]] = ()
     label: str = ""
 
-    @property
-    def name(self) -> str:
-        return f"{self.label}{self.label and ' '}{'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.dates}"
-
     def calendar_tasks(self) -> Generator[Task]:
         for origin, destination, dates in product(
             self.query.origins, self.query.destinations, self.query.dates.calendar_dates()
@@ -118,7 +114,7 @@ class Job:
                 return avail.date in self.query.dates
 
             yield Task(
-                f"{self.label} {origin}-{destination} {dates[0]:%Y-%m}".lstrip(),
+                f"{self.label}{self.label and ' '}{origin}-{destination} {dates[0]:%Y-%m}",
                 [CalendarQuery(origin, destination, date, self.query.passengers) for date in dates],
                 self.frequency,
                 [*self.filters, is_date_in_range],
