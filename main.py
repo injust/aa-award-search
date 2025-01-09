@@ -95,14 +95,14 @@ class Job:
                 while date + self.SEARCH_RADIUS < self.stop:
                     yield (date := min(self.stop, date + self.SEARCH_WIDTH))
 
-        origins: Iterable[str] = field(validator=[min_len(1), not_(instance_of(str))])
-        destinations: Iterable[str] = field(validator=[min_len(1), not_(instance_of(str))])
+        origins: Collection[str] = field(validator=[min_len(1), not_(instance_of(str))])
+        destinations: Collection[str] = field(validator=[min_len(1), not_(instance_of(str))])
         dates: QueryRange
         passengers: int = 1
 
     query: Query
     frequency: dt.timedelta | None = None
-    filters: Iterable[Callable[[Availability], bool]] = ()
+    filters: Collection[Callable[[Availability], bool]] = ()
     label: str = ""
 
     def calendar_tasks(self) -> Generator[Task]:
@@ -144,9 +144,9 @@ class Job:
 @define
 class Task:
     name: str
-    queries: Iterable[AvailabilityQuery]
+    queries: Collection[AvailabilityQuery]
     frequency: dt.timedelta | None = field(default=None, validator=optional(ge(dt.timedelta(minutes=1))))
-    filters: Iterable[Callable[[Availability], bool]] = ()
+    filters: Collection[Callable[[Availability], bool]] = ()
     availability: Sequence[Availability] | None = None
 
     async def run(self) -> None:
