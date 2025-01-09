@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import operator
-from collections.abc import Iterator
+from collections.abc import Generator
 from typing import override
 
 from attrs import Attribute, field, frozen
@@ -38,7 +38,7 @@ class DayRange:
     def __contains__(self, key: object) -> bool:
         return isinstance(key, dt.date) and (self.start <= key <= self.stop or self.start >= key >= self.stop)
 
-    def __iter__(self) -> Iterator[dt.date]:
+    def __iter__(self) -> Generator[dt.date]:
         increasing = self.step > dt.timedelta()
         comp = operator.le if increasing else operator.ge
         if not comp(self.start, self.stop):
@@ -90,7 +90,7 @@ class MonthRange:
             and key.day == 1
         )
 
-    def __iter__(self) -> Iterator[dt.date]:
+    def __iter__(self) -> Generator[dt.date]:
         increasing = self.step.years * 12 + self.step.months > 0
         comp = operator.le if increasing else operator.ge
         if not comp(self.start, self.stop):
