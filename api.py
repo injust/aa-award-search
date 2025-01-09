@@ -12,7 +12,7 @@ from flights import Availability
 from utils import httpx_client
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterable
+    from collections.abc import AsyncGenerator, AsyncIterable
 
 
 @frozen
@@ -74,7 +74,7 @@ class AvailabilityQuery(Query, ABC):
 @frozen
 class CalendarQuery(AvailabilityQuery):
     @override
-    async def search(self) -> AsyncIterable[Availability]:
+    async def search(self) -> AsyncGenerator[Availability]:
         data = await self._send_query("search/calendar")
 
         if data["error"] == 309 and any(
@@ -96,7 +96,7 @@ class CalendarQuery(AvailabilityQuery):
 @frozen
 class WeeklyQuery(AvailabilityQuery):
     @override
-    async def search(self) -> AsyncIterable[Availability]:
+    async def search(self) -> AsyncGenerator[Availability]:
         data = await self._send_query("search/weekly")
 
         if data["error"] == 309 and any(day["solutionId"] for day in data["days"]):

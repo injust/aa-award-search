@@ -7,7 +7,7 @@ from attrs.validators import instance_of, not_
 from dateutil.relativedelta import relativedelta
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Generator
 
     from attrs import Attribute
 
@@ -35,7 +35,7 @@ class DayRange:
     def __contains__(self, key: object) -> bool:
         return isinstance(key, dt.date) and (self.start <= key <= self.stop or self.start >= key >= self.stop)
 
-    def __iter__(self) -> Iterator[dt.date]:
+    def __iter__(self) -> Generator[dt.date]:
         increasing = self.step > dt.timedelta()
         comp = operator.le if increasing else operator.ge
 
@@ -81,7 +81,7 @@ class MonthRange:
             and (self.start <= key <= self.stop or self.start >= key >= self.stop)
         )
 
-    def __iter__(self) -> Iterator[dt.date]:
+    def __iter__(self) -> Generator[dt.date]:
         increasing = self.step.years * 12 + self.step.months > 0
         comp = operator.le if increasing else operator.ge
 
