@@ -103,10 +103,6 @@ class Job:
     filters: Iterable[Callable[[Availability], bool]] = ()
     label: str | None = None
 
-    @property
-    def name(self) -> str:
-        return f"{self.label or ''} {'/'.join(self.query.origins)}-{'/'.join(self.query.destinations)} {self.query.dates}".lstrip()
-
     def calendar_tasks(self) -> Generator[Task]:
         for origin, destination, dates in product(
             self.query.origins, self.query.destinations, self.query.dates.calendar_dates()
