@@ -75,7 +75,8 @@ class Job:
             SEARCH_WIDTH: ClassVar[dt.timedelta] = SEARCH_RADIUS * 2 + dt.timedelta(days=1)
 
             def __attrs_post_init__(self) -> None:
-                if self.step <= dt.timedelta():
+                assert self.step, self.step
+                if self.step < dt.timedelta():
                     raise ValueError("`step` must be positive")
                 if not self:
                     raise ValueError("`QueryRange` must be a non-empty range")
