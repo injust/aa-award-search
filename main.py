@@ -4,14 +4,14 @@ import datetime as dt
 import random
 import sys
 from asyncio import CancelledError
-from collections.abc import Callable, Collection, Generator, Iterable, Sequence
+from collections.abc import Callable, Collection, Generator, Iterable
 from itertools import product
 from typing import ClassVar, Literal, Self
 
 import anyio
 import httpx
 from anyio import create_task_group
-from attrs import define, field, frozen
+from attrs import field, frozen
 from attrs.validators import ge, instance_of, min_len, not_, optional
 from dateutil.relativedelta import relativedelta
 from loguru import logger
@@ -139,13 +139,12 @@ class Job:
                 task_group.start_soon(task.run)
 
 
-@define
+@frozen
 class Task:
     name: str
     queries: Collection[AvailabilityQuery]
     frequency: dt.timedelta | None = field(default=None, validator=optional(ge(dt.timedelta(minutes=1))))
     filters: Collection[Callable[[Availability], bool]] = ()
-    availability: Sequence[Availability] | None = None
 
     async def run(self) -> None:
         @retry(
@@ -168,6 +167,8 @@ class Task:
                     return availability
             return []
 
+        availability: list[Availability] | None = None
+
         if self.frequency is None:
             availability = await run_once()
 
@@ -181,7 +182,7 @@ class Task:
 
         while True:
             try:
-                prev_availability, self.availability = self.availability, await run_once()
+                prev_availability, availability = availability, await run_once()
             except Exception as e:
                 match e:
                     case httpx.HTTPStatusError():
@@ -197,14 +198,12 @@ class Task:
             else:
                 if prev_availability is None:
                     logger.info(
-                        "{}\n{}\n",
-                        self.name,
-                        pretty_printer().pformat(list(map(Availability._asdict, self.availability))),
+                        "{}\n{}\n", self.name, pretty_printer().pformat(list(map(Availability._asdict, availability)))
                     )
-                    if self.availability:
+                    if availability:
                         beep()
                 else:
-                    diff = Diff.compare(prev_availability, self.availability)
+                    diff = Diff.compare(prev_availability, availability)
 
                     if any(change > " " for change, _ in diff.lines):
                         logger.opt(colors=True).info(f"{self.name}\n{diff.colorize()}\n")
