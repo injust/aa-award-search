@@ -78,13 +78,12 @@ class Job:
                 assert self.step
                 if self.step < dt.timedelta():
                     raise ValueError("`step` must be positive")
+                if self.start < dt.date.today():
+                    raise ValueError("`start` cannot be in the past")
+                if self.stop > dt.date.today() + self.SEARCH_LIMIT:
+                    raise ValueError(f"`stop` cannot be more than {self.SEARCH_LIMIT.days} days in the future")
                 if not bool(self):
                     raise ValueError("`QueryRange` must be a non-empty range")
-
-                if self.start < (min_start := dt.date.today()):
-                    object.__setattr__(self, "start", min_start)
-                if self.stop > (max_stop := dt.date.today() + self.SEARCH_LIMIT):
-                    object.__setattr__(self, "stop", max_stop)
 
             def calendar_dates(self) -> Generator[list[dt.date]]:
                 for first_day in MonthRange(self.start, self.stop):
