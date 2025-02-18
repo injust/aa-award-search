@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from functools import cache
+from collections.abc import Callable
+from functools import cache, wraps
 from pprint import PrettyPrinter
 
 import httpx
@@ -25,6 +26,23 @@ def httpx_client() -> httpx.AsyncClient:
         ),
         base_url="https://www.aa.com/booking/api/",
     )
+
+
+def remove_HTTPStatusError_info_suffix(
+    raise_for_status: Callable[[httpx.Response], httpx.Response],
+) -> Callable[[httpx.Response], httpx.Response]:
+    @wraps(raise_for_status)
+    def wrapper(self: httpx.Response) -> httpx.Response:
+        try:
+            return raise_for_status(self)
+        except httpx.HTTPStatusError as e:
+            assert len(e.args) == 1 and isinstance(e.args[0], str), e.args
+            message, removed = e.args[0].rsplit("\n", 1)
+            assert removed.startswith("For more information check:"), removed
+            e.args = (message,)
+            raise
+
+    return wrapper
 
 
 @cache
