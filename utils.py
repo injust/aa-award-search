@@ -1,9 +1,30 @@
 import time
-from functools import cache
+from functools import cache, wraps
 from pprint import PrettyPrinter
+from typing import TYPE_CHECKING
 
 import httpx
 from httpx._config import DEFAULT_LIMITS
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+
+def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
+    raise_for_status: Callable[[httpx.Response], httpx.Response],
+) -> Callable[[httpx.Response], httpx.Response]:
+    @wraps(raise_for_status)
+    def wrapper(self: httpx.Response) -> httpx.Response:
+        try:
+            return raise_for_status(self)
+        except httpx.HTTPStatusError as e:
+            assert len(e.args) == 1 and isinstance(e.args[0], str), e.args
+            message, removed = e.args[0].rsplit("\n", 1)
+            assert removed.startswith("For more information check:"), removed
+            e.args = (message,)
+            raise
+
+    return wrapper
 
 
 def beep(times: int = 1, *, interval: float = 0.15) -> None:
@@ -34,3 +55,6 @@ def httpx_client() -> httpx.AsyncClient:
 @cache
 def pretty_printer() -> PrettyPrinter:
     return PrettyPrinter(width=120, sort_dicts=False, underscore_numbers=True)
+
+
+httpx.Response.raise_for_status = httpx_remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
