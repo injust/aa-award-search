@@ -27,9 +27,11 @@ from tenacity import (
 from api import AvailabilityQuery, CalendarQuery, WeeklyQuery
 from date_range import DayRange, MonthRange
 from flights import Availability
-from utils import beep, httpx_client, pretty_printer
+from utils import beep, httpx_client, pretty_printer, remove_HTTPStatusError_info_suffix
 
 type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
+
+httpx.Response.raise_for_status = remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
 
 
 @frozen
