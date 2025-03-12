@@ -28,12 +28,7 @@ class DayRange:
             )
 
     def __bool__(self) -> bool:
-        try:
-            next(iter(self))
-        except StopIteration:
-            return False
-        else:
-            return True
+        return any(iter(self))
 
     def __contains__(self, key: object) -> bool:
         return isinstance(key, dt.date) and (self.start <= key <= self.stop or self.start >= key >= self.stop)
@@ -76,12 +71,7 @@ class MonthRange:
             raise ValueError(f"`{attr.name}` must be a `relativedelta` object with only `years` and `months` values")
 
     def __bool__(self) -> bool:
-        try:
-            next(iter(self))
-        except StopIteration:
-            return False
-        else:
-            return True
+        return any(iter(self))
 
     def __contains__(self, key: object) -> bool:
         return (
