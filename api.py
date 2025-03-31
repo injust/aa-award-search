@@ -51,9 +51,11 @@ class Query(ABC):
             "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
         }
         r = await httpx_client().post(endpoint, content=jsonlib.dumps(json))
+        r.status_code = HTTPStatus(r.status_code)
+
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
-                "{!r}: response_json={}, request_json={}", HTTPStatus(r.status_code), jsonlib.loads(r.content), json
+                "{!r}: response_json={}, request_json={}", r.status_code, jsonlib.loads(r.content), json
             )
             # Server errors are retried by `tenacity`
             r.raise_for_status()
