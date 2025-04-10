@@ -3,9 +3,10 @@ from __future__ import annotations
 import time
 from functools import cache, wraps
 from pprint import PrettyPrinter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import httpx
+import orjson as jsonlib
 from httpx._config import DEFAULT_LIMITS
 
 if TYPE_CHECKING:
@@ -52,6 +53,12 @@ def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
             raise
 
     return wrapper
+
+
+# TODO(https://github.com/encode/httpx/issues/717)
+@wraps(httpx.Response.json)
+def httpx_response_jsonlib(self: httpx.Response, **kwargs: Any) -> Any:
+    return jsonlib.loads(self.content, **kwargs)
 
 
 @cache
