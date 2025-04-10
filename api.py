@@ -57,12 +57,12 @@ class Query(ABC):
 
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
-                "{!r}: response_json={}, request_json={}", r.status_code, jsonlib.loads(r.content), json
+                "{!r}: response_json={}, request_json={}", r.status_code, r.json(), json
             )
             # Server errors are retried by `tenacity`
             r.raise_for_status()
 
-        data: dict[str, Any] = jsonlib.loads(r.content)
+        data: dict[str, Any] = r.json()
         if (error := data["error"]) and error != "309":
             raise ValueError(f"Unexpected error code: {error!r}, response_json={data}, request_json={json}")
 
