@@ -1,0 +1,12 @@
+printWidth: 120
+tabWidth: 4
+semi: false
+singleQuote: true
+trailingComma: es5
+objectWrap: collapse
+proseWrap: never
+
+overrides:
+  - files: ['*.yaml', '*.yml']
+    options:
+      tabWidth: 2
