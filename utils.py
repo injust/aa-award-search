@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
 from functools import cache, wraps
 from pprint import PrettyPrinter
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import orjson as jsonlib
 from httpx._config import DEFAULT_LIMITS
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def beep(times: int = 1, interval: float = 0.15) -> None:
@@ -36,7 +38,7 @@ def httpx_client() -> httpx.AsyncClient:
     )
 
 
-def httpx_remove_HTTPStatusError_info_suffix(
+def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
     raise_for_status: Callable[[httpx.Response], httpx.Response],
 ) -> Callable[[httpx.Response], httpx.Response]:
     @wraps(raise_for_status)

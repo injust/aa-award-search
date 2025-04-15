@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import datetime as dt
 import operator
-from collections.abc import Generator
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from attrs import Attribute, field, frozen
 from attrs.validators import instance_of, not_
 from dateutil.relativedelta import relativedelta
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 
 @frozen
@@ -22,7 +24,7 @@ class DayRange:
     def _check_step(self, attr: Attribute[dt.timedelta], value: dt.timedelta) -> None:
         if not value:
             raise ValueError(f"`{attr.name}` must be non-zero")
-        elif value % dt.timedelta(days=1):
+        if value % dt.timedelta(days=1):
             raise ValueError(
                 f"`{attr.name}` must be a `dt.timedelta` object with only integer `weeks` and `days` values"
             )
@@ -67,7 +69,7 @@ class MonthRange:
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
         if not value:
             raise ValueError(f"`{attr.name}` must be non-zero")
-        elif value != relativedelta(years=value.years, months=value.months):
+        if value != relativedelta(years=value.years, months=value.months):
             raise ValueError(f"`{attr.name}` must be a `relativedelta` object with only `years` and `months` values")
 
     def __bool__(self) -> bool:

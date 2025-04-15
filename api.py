@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import datetime as dt
 from abc import ABC, abstractmethod
-from collections.abc import AsyncGenerator, AsyncIterable
 from http import HTTPStatus
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 import orjson as jsonlib
 from attrs import field, frozen
@@ -13,6 +12,9 @@ from loguru import logger
 
 from flights import Availability
 from utils import httpx_client
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, AsyncIterable
 
 
 @frozen
