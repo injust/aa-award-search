@@ -4,9 +4,8 @@ import datetime as dt
 import random
 import sys
 from asyncio import CancelledError
-from collections.abc import Callable, Collection, Generator, Iterable
 from itertools import product
-from typing import ClassVar, Literal, Self
+from typing import TYPE_CHECKING, ClassVar, Literal, Self
 
 import anyio
 import httpx
@@ -29,7 +28,10 @@ from date_range import DayRange, MonthRange
 from flights import Availability
 from utils import beep, httpx_client, httpx_remove_HTTPStatusError_info_suffix, httpx_response_jsonlib, pretty_printer
 
-type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
+if TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Generator, Iterable
+
+    type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
 httpx.Response.json = httpx_response_jsonlib  # type: ignore[method-assign]
 httpx.Response.raise_for_status = httpx_remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
@@ -79,11 +81,11 @@ class Job:
                 assert self.step
                 if self.step < dt.timedelta():
                     raise ValueError("`step` must be positive")
-                elif self.start < dt.date.today():
+                if self.start < dt.date.today():
                     raise ValueError("`start` cannot be in the past")
-                elif self.stop > dt.date.today() + self.SEARCH_LIMIT:
+                if self.stop > dt.date.today() + self.SEARCH_LIMIT:
                     raise ValueError(f"`stop` cannot be more than {self.SEARCH_LIMIT.days} days in the future")
-                elif not bool(self):
+                if not bool(self):
                     raise ValueError("`QueryRange` must be a non-empty range")
 
             def calendar_dates(self) -> Generator[list[dt.date]]:
