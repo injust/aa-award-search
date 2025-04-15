@@ -17,7 +17,7 @@ class Availability:
     fees: Fees
 
     @staticmethod
-    def _serialize(inst: type, attr: Attribute[object], value: object) -> object:
+    def _serialize(_inst: type, _attr: Attribute[object], value: object) -> object:
         match value:
             case dt.date():
                 return value.isoformat()
