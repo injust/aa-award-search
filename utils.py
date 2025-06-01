@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from functools import cache, wraps
+from functools import wraps
 from pprint import PrettyPrinter
 from typing import TYPE_CHECKING, Any
 
@@ -12,30 +12,28 @@ from httpx._config import DEFAULT_LIMITS
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+httpx_client = httpx.AsyncClient(
+    headers={
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    },
+    http2=True,
+    timeout=httpx.Timeout(5, read=10),
+    limits=httpx.Limits(
+        max_connections=DEFAULT_LIMITS.max_connections,
+        max_keepalive_connections=DEFAULT_LIMITS.max_keepalive_connections,
+        keepalive_expiry=60,
+    ),
+    base_url="https://www.aa.com/booking/api/",
+)
+pretty_printer = PrettyPrinter(width=120, sort_dicts=False, underscore_numbers=True)
+
 
 def beep(times: int = 1, interval: float = 0.15) -> None:
     for _ in range(times):
         print(end="\a", flush=True)
         time.sleep(interval)
-
-
-@cache
-def httpx_client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(
-        headers={
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        },
-        http2=True,
-        timeout=httpx.Timeout(5, read=10),
-        limits=httpx.Limits(
-            max_connections=DEFAULT_LIMITS.max_connections,
-            max_keepalive_connections=DEFAULT_LIMITS.max_keepalive_connections,
-            keepalive_expiry=60,
-        ),
-        base_url="https://www.aa.com/booking/api/",
-    )
 
 
 def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
@@ -59,8 +57,3 @@ def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
 @wraps(httpx.Response.json)
 def httpx_response_jsonlib(self: httpx.Response, **kwargs: Any) -> Any:
     return jsonlib.loads(self.content, **kwargs)
-
-
-@cache
-def pretty_printer() -> PrettyPrinter:
-    return PrettyPrinter(width=120, sort_dicts=False, underscore_numbers=True)

@@ -52,7 +52,7 @@ class Query(ABC):
             "version": "cfr",
             "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
         }
-        r = await httpx_client().post(endpoint, content=jsonlib.dumps(json))
+        r = await httpx_client.post(endpoint, content=jsonlib.dumps(json))
         r.status_code = HTTPStatus(r.status_code)
 
         if r.is_error:
