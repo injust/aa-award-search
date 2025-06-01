@@ -62,7 +62,7 @@ class Diff:
         LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
 
         return "\n".join(
-            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer().pformat(avail._asdict())}</>"
+            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer.pformat(avail._asdict())}</>"
             for change, avail in self.lines
         )
 
@@ -177,7 +177,7 @@ class Task:
         if self.frequency is None:
             availability = await run_once()
 
-            logger.info("{}\n{}\n", self.name, pretty_printer().pformat(list(map(Availability._asdict, availability))))
+            logger.info("{}\n{}\n", self.name, pretty_printer.pformat(list(map(Availability._asdict, availability))))
             if availability:
                 beep()
 
@@ -203,7 +203,7 @@ class Task:
             else:
                 if prev_availability is None:
                     logger.info(
-                        "{}\n{}\n", self.name, pretty_printer().pformat(list(map(Availability._asdict, availability)))
+                        "{}\n{}\n", self.name, pretty_printer.pformat(list(map(Availability._asdict, availability)))
                     )
                     if availability:
                         beep()
@@ -223,7 +223,7 @@ async def main() -> None:
     jobs: list[Job] = []
 
     try:
-        async with httpx_client(), create_task_group() as task_group:
+        async with httpx_client, create_task_group() as task_group:
             for job in jobs:
                 task_group.start_soon(job.run)
     except* (CancelledError, KeyboardInterrupt):
