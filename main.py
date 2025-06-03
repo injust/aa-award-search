@@ -226,7 +226,7 @@ async def main() -> None:
         async with httpx_client, create_task_group() as task_group:
             for job in jobs:
                 task_group.start_soon(job.run)
-    except* (CancelledError, KeyboardInterrupt):
+    except CancelledError:
         logger.debug("Shutting down")
 
 
