@@ -220,7 +220,7 @@ class Task:
 async def main() -> None:
     jobs: list[Job] = []
 
-    with suppress(CancelledError, KeyboardInterrupt):
+    with suppress(CancelledError):
         async with httpx_client, create_task_group() as tg:
             for job in jobs:
                 tg.start_soon(job.run)
