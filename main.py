@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import datetime as dt
-import random
 import sys
 from asyncio import CancelledError
 from itertools import product
+from random import randrange
 from typing import TYPE_CHECKING, ClassVar, Literal, Self
 
 import anyio
@@ -183,7 +183,7 @@ class Task:
 
             return
 
-        await anyio.sleep(random.uniform(0, self.frequency.total_seconds() / 2))
+        await anyio.sleep(randrange(int(self.frequency.total_seconds() // 2)))
 
         while True:
             try:
