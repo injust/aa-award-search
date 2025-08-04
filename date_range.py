@@ -23,11 +23,11 @@ class DayRange:
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
     def _check_step(self, attr: Attribute[dt.timedelta], value: dt.timedelta) -> None:
         if not value:
-            raise ValueError(f"`{attr.name}` must be non-zero")
+            msg = f"`{attr.name}` must be non-zero"
+            raise ValueError(msg)
         if value % dt.timedelta(days=1):
-            raise ValueError(
-                f"`{attr.name}` must be a `dt.timedelta` object with only integer `weeks` and `days` values"
-            )
+            msg = f"`{attr.name}` must be a `dt.timedelta` object with only integer `weeks` and `days` values"
+            raise ValueError(msg)
 
     def __bool__(self) -> bool:
         return any(iter(self))
@@ -67,9 +67,11 @@ class MonthRange:
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
         if not value:
-            raise ValueError(f"`{attr.name}` must be non-zero")
+            msg = f"`{attr.name}` must be non-zero"
+            raise ValueError(msg)
         if value != relativedelta(years=value.years, months=value.months):
-            raise ValueError(f"`{attr.name}` must be a `relativedelta` object with only `years` and `months` values")
+            msg = f"`{attr.name}` must be a `relativedelta` object with only `years` and `months` values"
+            raise ValueError(msg)
 
     def __bool__(self) -> bool:
         return any(iter(self))

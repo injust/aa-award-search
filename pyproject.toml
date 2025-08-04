@@ -33,13 +33,20 @@ skip-magic-trailing-comma = true
 
 [tool.ruff.lint]
 extend-select = [
+    "ANN",   # flake8-annotations
     "ASYNC", # flake8-async
+    "S",     # flake8-bandit
+    "BLE",   # flake8-blind-except
     "FBT",   # flake8-boolean-trap
     "B",     # flake8-bugbear
+    "A",     # flake8-builtins
     "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
     "T10",   # flake8-debugger
+    "EM",    # flake8-errmsg
     "EXE",   # flake8-executable
     "FA",    # flake8-future-annotations
+    "ISC",   # flake8-implicit-str-concat
     "ICN",   # flake8-import-conventions
     "LOG",   # flake8-logging
     "G",     # flake8-logging-format
@@ -68,21 +75,24 @@ extend-select = [
     "TRY",   # tryceratops
 ]
 ignore = [
-    "E501",
-    "N806",
-    "PLE1205",
-    "PLR0911",
-    "PLR0912",
-    "PLR0915",
-    "PLR2004",
-    "PLW0603",
-    "RUF200",
-    "TD002",
-    "TD003",
-    "TD004",
-    "TD005",
-    "TRY003",
-    "TRY400",
+    "ANN401",  # any-type
+    "E501",    # line-too-long
+    "N806",    # non-lowercase-variable-in-function
+    "PLE1205", # logging-too-many-args
+    "PLR0911", # too-many-return-statements
+    "PLR0912", # too-many-branches
+    "PLR0915", # too-many-statements
+    "PLR2004", # magic-value-comparison
+    "PLW0603", # global-statement
+    "RUF200",  # invalid-pyproject-toml
+    "S101",    # assert
+    "S311",    # suspicious-non-cryptographic-random-usage
+    "TD002",   # missing-todo-author
+    "TD003",   # missing-todo-link
+    "TD004",   # missing-todo-colon
+    "TD005",   # missing-todo-description
+    "TRY003",  # raise-vanilla-args
+    "TRY400",  # error-instead-of-exception
 ]
 
 [tool.ruff.lint.isort]
@@ -91,5 +101,7 @@ required-imports = ["from __future__ import annotations"]
 split-on-trailing-comma = false
 
 [tool.ruff.lint.per-file-ignores]
-# TODO(Ruff 2026): Remove when https://github.com/astral-sh/ruff/pull/18400 is promoted to stable
-"__init__.py" = ["PLC0414"]
+"__init__.py" = [
+    # TODO(Ruff 2026): Remove when https://github.com/astral-sh/ruff/pull/18400 is promoted to stable
+    "PLC0414", # useless-import-alias
+]
