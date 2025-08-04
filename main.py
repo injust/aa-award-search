@@ -77,13 +77,20 @@ class Job:
             def __attrs_post_init__(self) -> None:
                 assert self.step, self.step
                 if self.step < dt.timedelta():
-                    raise ValueError("`step` must be positive")
-                if self.start < dt.date.today():
-                    raise ValueError("`start` cannot be in the past")
-                if self.stop > dt.date.today() + self.SEARCH_LIMIT:
-                    raise ValueError(f"`stop` cannot be more than {self.SEARCH_LIMIT.days} days in the future")
+                    msg = "`step` must be positive"
+                    raise ValueError(msg)
+
+                today = dt.date.today()  # noqa: DTZ011
+                if self.start < today:
+                    msg = "`start` cannot be in the past"
+                    raise ValueError(msg)
+                if self.stop > today + self.SEARCH_LIMIT:
+                    msg = f"`stop` cannot be more than {self.SEARCH_LIMIT.days} days in the future"
+                    raise ValueError(msg)
+
                 if not self:
-                    raise ValueError("`QueryRange` must be a non-empty range")
+                    msg = "`QueryRange` must be a non-empty range"
+                    raise ValueError(msg)
 
             def calendar_dates(self) -> Generator[list[dt.date]]:
                 for first_day in MonthRange(self.start, self.stop):
@@ -164,7 +171,7 @@ class Task:
         async def run_once() -> list[Availability]:
             for query in self.queries:
                 if availability := [
-                    avail async for avail in query.search() if all(filter(avail) for filter in self.filters)
+                    avail async for avail in query.search() if all(filter_(avail) for filter_ in self.filters)
                 ]:
                     return availability
             return []
@@ -186,7 +193,7 @@ class Task:
         while True:
             try:
                 prev_availability, availability = availability, await run_once()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 match e:
                     case httpx.HTTPStatusError():
                         # Already logged in `Query._send_query()`

@@ -62,7 +62,8 @@ class Query(ABC):
 
         data: dict[str, Any] = r.json()
         if (error := data["error"]) and error != "309":
-            raise ValueError(f"Unexpected error code: {error!r}, response_json={data}, request_json={json}")
+            msg = f"Unexpected error code: {error!r}, response_json={data}, request_json={json}"
+            raise ValueError(msg)
         return data
 
 
