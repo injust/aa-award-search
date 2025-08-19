@@ -14,6 +14,7 @@ from attrs import field, frozen
 from attrs.validators import ge, instance_of, min_len, not_, optional
 from dateutil.relativedelta import relativedelta
 from loguru import logger
+from more_itertools import first_true
 from tenacity import (
     before_sleep_log,
     retry,
@@ -172,12 +173,13 @@ class Task:
             before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
         )
         async def run_once() -> list[Availability]:
-            for query in self.queries:
-                if availability := [
-                    avail async for avail in query.search() if all(filter_(avail) for filter_ in self.filters)
-                ]:
-                    return availability
-            return []
+            return first_true(
+                (
+                    [avail async for avail in query.search() if all(filter_(avail) for filter_ in self.filters)]
+                    for query in self.queries
+                ),
+                [],  # pyright: ignore[reportUnknownArgumentType]
+            )
 
         availability: list[Availability] | None = None
 
