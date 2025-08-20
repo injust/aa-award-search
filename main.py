@@ -215,9 +215,10 @@ class Task:
                 else:
                     diff = Diff.compare(prev_availability, availability)
 
-                    if any(change > " " for change, _ in diff.lines):
+                    changes = {change for change, _ in diff.lines}
+                    if any(change > " " for change in changes):
                         logger.opt(colors=True).info(f"{self.name}\n{diff.colorize()}\n")
-                        if any(change == "+" for change, _ in diff.lines):
+                        if "+" in changes:
                             beep(3)
 
                 await anyio.sleep(self.frequency.total_seconds())
