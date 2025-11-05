@@ -5,3 +5,4 @@ loguru~=0.7
 orjson~=3.11
 python-dateutil~=2.9
 tenacity~=9.1
+uvloop~=0.22
