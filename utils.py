@@ -10,6 +10,12 @@ from httpx._config import DEFAULT_LIMITS
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+HTTPX_LIMITS = httpx.Limits(
+    max_connections=DEFAULT_LIMITS.max_connections,
+    max_keepalive_connections=DEFAULT_LIMITS.max_keepalive_connections,
+    keepalive_expiry=60,
+)
+
 
 def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
     raise_for_status: Callable[[httpx.Response], httpx.Response],
@@ -50,11 +56,7 @@ httpx_client = httpx.AsyncClient(
     },
     http2=True,
     timeout=httpx.Timeout(5, read=10),
-    limits=httpx.Limits(
-        max_connections=DEFAULT_LIMITS.max_connections,
-        max_keepalive_connections=DEFAULT_LIMITS.max_keepalive_connections,
-        keepalive_expiry=60,
-    ),
+    limits=HTTPX_LIMITS,
     base_url="https://www.aa.com/booking/api/",
 )
 
