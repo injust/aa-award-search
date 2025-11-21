@@ -1,5 +1,6 @@
 import time
 from functools import wraps
+from http import HTTPStatus
 from pprint import PrettyPrinter
 from typing import TYPE_CHECKING, Any
 
@@ -15,6 +16,10 @@ HTTPX_LIMITS = httpx.Limits(
     max_keepalive_connections=DEFAULT_LIMITS.max_keepalive_connections,
     keepalive_expiry=60,
 )
+
+
+async def httpx_make_status_code_HTTPStatus(r: httpx.Response) -> None:  # noqa: N802
+    r.status_code = HTTPStatus(r.status_code)
 
 
 def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
@@ -57,6 +62,7 @@ httpx_client = httpx.AsyncClient(
     http2=True,
     timeout=httpx.Timeout(5, read=10),
     limits=HTTPX_LIMITS,
+    event_hooks={"response": [httpx_make_status_code_HTTPStatus]},
     base_url="https://www.aa.com/booking/api/",
 )
 
