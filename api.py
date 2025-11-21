@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import datetime as dt
 from abc import ABC, abstractmethod
-from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, override
 
 import orjson as jsonlib
@@ -55,7 +54,6 @@ class Query(ABC):
             "queryParams": {"sliceIndex": 0, "sessionId": "", "solutionSet": "", "solutionId": ""},
         }
         r = await httpx_client.post(endpoint, content=jsonlib.dumps(json))
-        r.status_code = HTTPStatus(r.status_code)
 
         if r.is_error:
             (logger.debug if r.is_server_error else logger.error)(
