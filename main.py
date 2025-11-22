@@ -25,7 +25,8 @@ from tenacity import (
 from api import CalendarQuery, WeeklyQuery
 from date_range import DayRange, MonthRange
 from flights import Availability
-from utils import beep, httpx_client, pretty_printer
+from httpx_utils import httpx_client
+from utils import beep, pretty_printer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Generator, Iterable

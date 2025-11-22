@@ -8,7 +8,7 @@ from attrs.validators import ge, le
 from loguru import logger
 
 from flights import Availability
-from utils import httpx_client
+from httpx_utils import httpx_client
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, AsyncIterable
