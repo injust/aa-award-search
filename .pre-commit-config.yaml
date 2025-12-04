@@ -19,4 +19,4 @@ repos:
     hooks:
       - id: mypy
         args: [--disable-error-code=import-untyped]
-        additional_dependencies: [anyio, attrs, httpx, loguru, orjson, types-python-dateutil, tenacity]
+        additional_dependencies: [anyio, attrs, babel, httpx, loguru, orjson, types-python-dateutil, tenacity]
