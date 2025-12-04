@@ -1,5 +1,6 @@
 anyio~=4.12
 attrs~=25.4
+babel~=2.18
 httpx[http2]~=0.28
 loguru~=0.7
 orjson~=3.11

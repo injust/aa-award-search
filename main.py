@@ -24,7 +24,6 @@ from tenacity import (
 
 from api import CalendarQuery, WeeklyQuery
 from date_range import DayRange, MonthRange
-from flights import Availability
 from httpx_utils import httpx_client
 from utils import beep, pretty_printer
 
@@ -32,6 +31,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Collection, Generator, Iterable
 
     from api import AvailabilityQuery
+    from flights import Availability
 
     type DiffLine = tuple[Literal[" ", "+", "-"], Availability]
 
@@ -60,8 +60,7 @@ class Diff:
         LOGURU_COLOR_TAGS = {" ": "dim", "+": "green", "-": "red"}
 
         return "\n".join(
-            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer.pformat(avail._asdict())}</>"
-            for change, avail in self.lines
+            f"<{LOGURU_COLOR_TAGS[change]}>{change}{pretty_printer.pformat(avail)}</>" for change, avail in self.lines
         )
 
 
@@ -182,7 +181,7 @@ class Task:
         if self.frequency is None:
             availability = await run_once()
 
-            logger.info("{}\n{}\n", self.name, pretty_printer.pformat(list(map(Availability._asdict, availability))))
+            logger.info("{}\n{}\n", self.name, pretty_printer.pformat(availability))
             if availability:
                 beep()
 
@@ -208,9 +207,7 @@ class Task:
                 break
             else:
                 if prev_availability is None:
-                    logger.info(
-                        "{}\n{}\n", self.name, pretty_printer.pformat(list(map(Availability._asdict, availability)))
-                    )
+                    logger.info("{}\n{}\n", self.name, pretty_printer.pformat(availability))
                     if availability:
                         beep()
                 else:
