@@ -14,9 +14,3 @@ repos:
     rev: 1.34.0
     hooks:
       - id: basedpyright
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.19.0
-    hooks:
-      - id: mypy
-        args: [--disable-error-code=import-untyped]
-        additional_dependencies: [anyio, attrs, babel, httpx, loguru, orjson, types-python-dateutil, tenacity]
