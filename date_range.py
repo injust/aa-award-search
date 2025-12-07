@@ -60,9 +60,9 @@ class MonthRange:
     def _set_day_one(date: dt.date) -> dt.date:
         return date.replace(day=1)
 
-    start: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_set_day_one)  # type: ignore[misc]
-    stop: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_set_day_one)  # type: ignore[misc]
-    step: relativedelta = field(default=relativedelta(months=+1), converter=relativedelta.normalized)  # type: ignore[misc]
+    start: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_set_day_one)
+    stop: dt.date = field(validator=not_(instance_of(dt.datetime)), converter=_set_day_one)
+    step: relativedelta = field(default=relativedelta(months=+1), converter=relativedelta.normalized)
 
     @step.validator  # pyright: ignore[reportAttributeAccessIssue, reportUntypedFunctionDecorator, reportUnknownMemberType]
     def _check_step(self, attr: Attribute[relativedelta], value: relativedelta) -> None:
