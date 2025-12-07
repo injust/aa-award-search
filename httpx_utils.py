@@ -43,8 +43,8 @@ def httpx_response_jsonlib(self: httpx.Response, **kwargs: Any) -> Any:
     return jsonlib.loads(self.content, **kwargs)
 
 
-httpx.Response.json = httpx_response_jsonlib  # type: ignore[method-assign]
-httpx.Response.raise_for_status = httpx_remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)  # type: ignore[assignment, method-assign]  # pyright: ignore[reportAttributeAccessIssue]
+httpx.Response.json = httpx_response_jsonlib
+httpx.Response.raise_for_status = httpx_remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)  # pyright: ignore[reportAttributeAccessIssue]
 httpx_client = httpx.AsyncClient(
     headers={
         "Accept": "application/json",
