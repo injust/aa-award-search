@@ -160,13 +160,13 @@ class Task:
             stop=stop_after_attempt(3),
             wait=wait_exponential(),
             retry=retry_if_exception(lambda e: isinstance(e, httpx.HTTPStatusError) and e.response.is_server_error),
-            before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+            before_sleep=before_sleep_log(logger, "DEBUG"),  # pyright: ignore[reportArgumentType]
         )
         @retry(
             stop=stop_after_attempt(10),
             wait=wait_exponential(max=32),
             retry=retry_if_exception_type(httpx.TransportError),
-            before_sleep=before_sleep_log(logger, "DEBUG"),  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+            before_sleep=before_sleep_log(logger, "DEBUG"),  # pyright: ignore[reportArgumentType]
         )
         async def run_once() -> list[Availability]:
             for query in self.queries:
