@@ -1,10 +1,11 @@
 from functools import wraps
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Never
 
 import httpx
 import orjson as jsonlib
 from httpx._config import DEFAULT_LIMITS
+from wrapt import function_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,21 +21,18 @@ async def httpx_make_status_code_HTTPStatus(r: httpx.Response) -> None:  # noqa:
     r.status_code = HTTPStatus(r.status_code)
 
 
+@function_wrapper
 def httpx_remove_HTTPStatusError_info_suffix(  # noqa: N802
-    raise_for_status: Callable[[httpx.Response], httpx.Response],
-) -> Callable[[httpx.Response], httpx.Response]:
-    @wraps(raise_for_status)
-    def wrapper(self: httpx.Response) -> httpx.Response:
-        try:
-            return raise_for_status(self)
-        except httpx.HTTPStatusError as e:
-            assert len(e.args) == 1 and isinstance(e.args[0], str), e.args
-            message, removed = e.args[0].rsplit("\n", 1)
-            assert removed.startswith("For more information check:"), removed
-            e.args = (message,)
-            raise
-
-    return wrapper
+    raise_for_status: Callable[[], httpx.Response], _instance: httpx.Response, args: tuple[()], kwargs: dict[str, Never]
+) -> httpx.Response:
+    try:
+        return raise_for_status(*args, **kwargs)
+    except httpx.HTTPStatusError as e:
+        assert len(e.args) == 1 and isinstance(e.args[0], str), e.args
+        message, removed = e.args[0].rsplit("\n", 1)
+        assert removed.startswith("For more information check:"), removed
+        e.args = (message,)
+        raise
 
 
 # TODO(https://github.com/encode/httpx/issues/717)
@@ -44,7 +42,7 @@ def httpx_response_jsonlib(self: httpx.Response, **kwargs: Any) -> Any:
 
 
 httpx.Response.json = httpx_response_jsonlib
-httpx.Response.raise_for_status = httpx_remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)  # pyright: ignore[reportAttributeAccessIssue]
+httpx.Response.raise_for_status = httpx_remove_HTTPStatusError_info_suffix(httpx.Response.raise_for_status)
 httpx_client = httpx.AsyncClient(
     headers={
         "Accept": "application/json",
